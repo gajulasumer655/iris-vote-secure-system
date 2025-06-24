@@ -42,6 +42,22 @@ export const useVoting = () => {
   return context;
 };
 
+// Simple face matching simulation - in a real implementation, this would use actual facial recognition
+const compareFaceImages = (registeredFaceData: string, currentFaceData: string): boolean => {
+  // For demo purposes, we'll simulate face matching with a more realistic approach
+  // In reality, this would use face recognition algorithms
+  
+  // If it's the exact same image (for testing), return true
+  if (registeredFaceData === currentFaceData) {
+    return true;
+  }
+  
+  // Simulate face matching with 80% accuracy for demo
+  // In production, this would be replaced with actual facial recognition comparison
+  const matchScore = Math.random();
+  return matchScore > 0.2; // 80% chance of matching for demo purposes
+};
+
 export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [voters, setVoters] = useState<Voter[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([
@@ -69,6 +85,8 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   const verifyVoter = (aadhaar: string, voterId: string, name: string, faceData: string) => {
+    console.log('Verifying voter with:', { aadhaar, voterId, name });
+    
     const voter = voters.find(v => 
       v.aadhaarNumber === aadhaar && 
       v.voterId === voterId && 
@@ -76,20 +94,25 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     );
 
     if (!voter) {
+      console.log('Voter not found in database');
       return { success: false, message: "Voter details not found. Please register first." };
     }
 
-    // Simulate facial recognition (in real implementation, this would compare face encodings)
-    const faceMatch = voter.faceData === faceData || Math.random() > 0.3; // 70% success rate for demo
-
-    if (!faceMatch) {
-      return { success: false, message: "Facial recognition failed. Details do not match." };
-    }
-
+    console.log('Voter found, checking if already voted:', voter.hasVoted);
     if (voter.hasVoted) {
-      return { success: false, message: "Vote already casted for this voter." };
+      return { success: false, message: "Vote already cast for this voter." };
     }
 
+    // Compare the captured face with registered face data
+    console.log('Comparing face images...');
+    const faceMatch = compareFaceImages(voter.faceData, faceData);
+    
+    if (!faceMatch) {
+      console.log('Face images do not match');
+      return { success: false, message: "Face verification failed. The captured image does not match with your registered face data." };
+    }
+
+    console.log('Face verification successful');
     return { success: true, message: "Voter verified successfully.", voter };
   };
 
