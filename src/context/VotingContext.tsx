@@ -42,20 +42,30 @@ export const useVoting = () => {
   return context;
 };
 
-// Simple face matching simulation - in a real implementation, this would use actual facial recognition
+// Improved face matching simulation - more restrictive
 const compareFaceImages = (registeredFaceData: string, currentFaceData: string): boolean => {
-  // For demo purposes, we'll simulate face matching with a more realistic approach
-  // In reality, this would use face recognition algorithms
+  console.log('Comparing face images...');
+  console.log('Registered face data length:', registeredFaceData.length);
+  console.log('Current face data length:', currentFaceData.length);
   
   // If it's the exact same image (for testing), return true
   if (registeredFaceData === currentFaceData) {
+    console.log('Exact match found - same image data');
     return true;
   }
   
-  // Simulate face matching with 80% accuracy for demo
-  // In production, this would be replaced with actual facial recognition comparison
+  // For demo purposes, we'll be more restrictive
+  // In reality, this would use face recognition algorithms
+  // Making it much more restrictive - only 10% chance of false positive
   const matchScore = Math.random();
-  return matchScore > 0.2; // 80% chance of matching for demo purposes
+  const threshold = 0.9; // 90% threshold - much more restrictive
+  const isMatch = matchScore > threshold;
+  
+  console.log('Face match score:', matchScore);
+  console.log('Threshold:', threshold);
+  console.log('Face match result:', isMatch);
+  
+  return isMatch;
 };
 
 export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -104,15 +114,15 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
 
     // Compare the captured face with registered face data
-    console.log('Comparing face images...');
+    console.log('Starting face verification process...');
     const faceMatch = compareFaceImages(voter.faceData, faceData);
     
     if (!faceMatch) {
-      console.log('Face images do not match');
-      return { success: false, message: "Face verification failed. The captured image does not match with your registered face data." };
+      console.log('FACE VERIFICATION FAILED - Images do not match');
+      return { success: false, message: "Face verification failed. The captured image does not match your registered face data. Please try again or contact support." };
     }
 
-    console.log('Face verification successful');
+    console.log('FACE VERIFICATION SUCCESSFUL - Access granted');
     return { success: true, message: "Voter verified successfully.", voter };
   };
 
