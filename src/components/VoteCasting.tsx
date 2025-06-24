@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Vote, Camera, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -97,7 +96,7 @@ const VoteCasting = () => {
   };
 
   const handleVote = (candidateId: string) => {
-    if (verifiedVoter && castVote(candidateId,!verifiedVoter.id)) {
+    if (verifiedVoter && castVote(candidateId, verifiedVoter.id)) {
       setStep('success');
       toast({
         title: "Vote Cast Successfully",
