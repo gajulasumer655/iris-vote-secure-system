@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Camera, User, CreditCard, MapPin, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -95,21 +94,29 @@ const UserRegistration = () => {
     }
 
     try {
-      registerVoter({
+      const result = registerVoter({
         ...formData,
         faceData: faceCapture,
         irisData: irisCapture,
       });
 
-      toast({
-        title: "Registration Successful",
-        description: "Your voter registration has been completed successfully.",
-      });
+      if (result.success) {
+        toast({
+          title: "Registration Successful",
+          description: result.message,
+        });
 
-      // Reset form
-      setFormData({ name: '', aadhaarNumber: '', voterId: '', address: '' });
-      setFaceCapture(null);
-      setIrisCapture(null);
+        // Reset form
+        setFormData({ name: '', aadhaarNumber: '', voterId: '', address: '' });
+        setFaceCapture(null);
+        setIrisCapture(null);
+      } else {
+        toast({
+          title: "Registration Failed",
+          description: result.message,
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       toast({
         title: "Registration Failed",

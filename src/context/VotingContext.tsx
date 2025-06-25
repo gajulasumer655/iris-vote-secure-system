@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 interface Voter {
@@ -23,7 +22,7 @@ interface Candidate {
 interface VotingContextType {
   voters: Voter[];
   candidates: Candidate[];
-  registerVoter: (voter: Omit<Voter, 'id' | 'hasVoted'>) => void;
+  registerVoter: (voter: Omit<Voter, 'id' | 'hasVoted'>) => { success: boolean; message: string };
   addCandidate: (candidate: Omit<Candidate, 'id' | 'voteCount'>) => void;
   castVote: (candidateId: string, voterId: string) => boolean;
   verifyVoter: (aadhaar: string, voterId: string, name: string, faceData: string) => { success: boolean; message: string; voter?: Voter };
@@ -78,6 +77,24 @@ const compareFaceImages = (registeredFaceData: string, currentFaceData: string):
   return isMatch;
 };
 
+// Function to check if a face is already registered
+const checkFaceAlreadyRegistered = (newFaceData: string, existingVoters: Voter[]): boolean => {
+  console.log('Checking if face is already registered...');
+  console.log('New face data length:', newFaceData.length);
+  console.log('Existing voters count:', existingVoters.length);
+  
+  for (const voter of existingVoters) {
+    console.log(`Comparing with voter ${voter.name} (ID: ${voter.id})`);
+    if (compareFaceImages(voter.faceData, newFaceData)) {
+      console.log(`DUPLICATE FACE DETECTED - Matches existing voter: ${voter.name}`);
+      return true;
+    }
+  }
+  
+  console.log('No duplicate face found - registration allowed');
+  return false;
+};
+
 export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [voters, setVoters] = useState<Voter[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([
@@ -86,14 +103,44 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   ]);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
 
-  const registerVoter = (voterData: Omit<Voter, 'id' | 'hasVoted'>) => {
+  const registerVoter = (voterData: Omit<Voter, 'id' | 'hasVoted'>): { success: boolean; message: string } => {
+    console.log('Attempting to register new voter:', voterData.name);
+    console.log('Registering voter with face data length:', voterData.faceData.length);
+    
+    // Check if face is already registered
+    if (checkFaceAlreadyRegistered(voterData.faceData, voters)) {
+      return {
+        success: false,
+        message: "Face already registered! This face is already associated with another voter registration. Please contact support if you believe this is an error."
+      };
+    }
+    
+    // Check for duplicate Aadhaar or Voter ID
+    const existingVoter = voters.find(v => 
+      v.aadhaarNumber === voterData.aadhaarNumber || 
+      v.voterId === voterData.voterId
+    );
+    
+    if (existingVoter) {
+      return {
+        success: false,
+        message: "Aadhaar number or Voter ID already registered. Each citizen can only register once."
+      };
+    }
+    
     const newVoter: Voter = {
       ...voterData,
       id: Date.now().toString(),
       hasVoted: false,
     };
-    console.log('Registering voter with face data length:', newVoter.faceData.length);
+    
     setVoters(prev => [...prev, newVoter]);
+    console.log('Voter registered successfully:', newVoter.name);
+    
+    return {
+      success: true,
+      message: "Voter registered successfully!"
+    };
   };
 
   const addCandidate = (candidateData: Omit<Candidate, 'id' | 'voteCount'>) => {
