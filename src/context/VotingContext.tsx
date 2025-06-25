@@ -42,23 +42,33 @@ export const useVoting = () => {
   return context;
 };
 
-// Improved face matching simulation - more restrictive
+// Improved face matching function - handles exact matches and simulated matching
 const compareFaceImages = (registeredFaceData: string, currentFaceData: string): boolean => {
   console.log('Comparing face images...');
   console.log('Registered face data length:', registeredFaceData.length);
   console.log('Current face data length:', currentFaceData.length);
   
-  // If it's the exact same image (for testing), return true
+  // If it's the exact same image data, return true immediately
   if (registeredFaceData === currentFaceData) {
-    console.log('Exact match found - same image data');
+    console.log('EXACT MATCH FOUND - Same image data');
     return true;
   }
   
-  // For demo purposes, we'll be more restrictive
-  // In reality, this would use face recognition algorithms
-  // Making it much more restrictive - only 10% chance of false positive
+  // Check if both images are valid base64 data URLs
+  const isValidBase64Image = (data: string) => {
+    return data.startsWith('data:image/') && data.includes('base64,');
+  };
+  
+  if (!isValidBase64Image(registeredFaceData) || !isValidBase64Image(currentFaceData)) {
+    console.log('Invalid image data format');
+    return false;
+  }
+  
+  // For demo purposes with different images, simulate face recognition
+  // In production, this would use actual facial recognition algorithms
+  // For testing, we'll make it more lenient when images are different but valid
   const matchScore = Math.random();
-  const threshold = 0.9; // 90% threshold - much more restrictive
+  const threshold = 0.3; // 70% success rate for different but valid images
   const isMatch = matchScore > threshold;
   
   console.log('Face match score:', matchScore);
@@ -82,6 +92,7 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       id: Date.now().toString(),
       hasVoted: false,
     };
+    console.log('Registering voter with face data length:', newVoter.faceData.length);
     setVoters(prev => [...prev, newVoter]);
   };
 
@@ -96,6 +107,7 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const verifyVoter = (aadhaar: string, voterId: string, name: string, faceData: string) => {
     console.log('Verifying voter with:', { aadhaar, voterId, name });
+    console.log('Received face data length:', faceData.length);
     
     const voter = voters.find(v => 
       v.aadhaarNumber === aadhaar && 
@@ -109,6 +121,8 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
 
     console.log('Voter found, checking if already voted:', voter.hasVoted);
+    console.log('Stored face data length:', voter.faceData.length);
+    
     if (voter.hasVoted) {
       return { success: false, message: "Vote already cast for this voter." };
     }
