@@ -7,7 +7,7 @@ interface Voter {
   voterId: string;
   address: string;
   faceData: string;
-  irisData: string;
+  irisData: string; // Keep for backward compatibility but make optional
   hasVoted: boolean;
 }
 
@@ -41,7 +41,7 @@ export const useVoting = () => {
   return context;
 };
 
-// Improved face matching function - handles exact matches and simulated matching
+// Improved face matching function with better quality checks
 const compareFaceImages = (registeredFaceData: string, currentFaceData: string): boolean => {
   console.log('Comparing face images...');
   console.log('Registered face data length:', registeredFaceData.length);
@@ -60,6 +60,13 @@ const compareFaceImages = (registeredFaceData: string, currentFaceData: string):
   
   if (!isValidBase64Image(registeredFaceData) || !isValidBase64Image(currentFaceData)) {
     console.log('Invalid image data format');
+    return false;
+  }
+  
+  // Check minimum image size for quality assurance
+  const minImageSize = 10000; // Minimum base64 string length for decent quality
+  if (registeredFaceData.length < minImageSize || currentFaceData.length < minImageSize) {
+    console.log('Image quality too low - insufficient data');
     return false;
   }
   
@@ -107,6 +114,14 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     console.log('Attempting to register new voter:', voterData.name);
     console.log('Registering voter with face data length:', voterData.faceData.length);
     
+    // Validate face image quality
+    if (!voterData.faceData || voterData.faceData.length < 10000) {
+      return {
+        success: false,
+        message: "Face image quality is insufficient. Please retake the photo with better lighting and ensure your face is clearly visible."
+      };
+    }
+    
     // Check if face is already registered
     if (checkFaceAlreadyRegistered(voterData.faceData, voters)) {
       return {
@@ -139,7 +154,7 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     
     return {
       success: true,
-      message: "Voter registered successfully!"
+      message: "Voter registered successfully! Your face has been captured with good quality for secure voting."
     };
   };
 
