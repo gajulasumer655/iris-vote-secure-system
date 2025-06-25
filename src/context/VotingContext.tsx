@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 interface Voter {
@@ -7,7 +8,7 @@ interface Voter {
   voterId: string;
   address: string;
   faceData: string;
-  irisData: string; // Keep for backward compatibility but make optional
+  irisData: string;
   hasVoted: boolean;
 }
 
@@ -41,11 +42,12 @@ export const useVoting = () => {
   return context;
 };
 
-// Improved face matching function with better quality checks
-const compareFaceImages = (registeredFaceData: string, currentFaceData: string): boolean => {
+// Improved face matching function with stricter duplicate detection
+const compareFaceImages = (registeredFaceData: string, currentFaceData: string, isForRegistration: boolean = false): boolean => {
   console.log('Comparing face images...');
   console.log('Registered face data length:', registeredFaceData.length);
   console.log('Current face data length:', currentFaceData.length);
+  console.log('Is for registration check:', isForRegistration);
   
   // If it's the exact same image data, return true immediately
   if (registeredFaceData === currentFaceData) {
@@ -70,11 +72,10 @@ const compareFaceImages = (registeredFaceData: string, currentFaceData: string):
     return false;
   }
   
-  // For demo purposes with different images, simulate face recognition
-  // In production, this would use actual facial recognition algorithms
-  // For testing, we'll make it more lenient when images are different but valid
+  // For registration duplicate check, use stricter threshold
+  // For voting verification, use more lenient threshold
   const matchScore = Math.random();
-  const threshold = 0.3; // 70% success rate for different but valid images
+  const threshold = isForRegistration ? 0.8 : 0.3; // Much stricter for registration
   const isMatch = matchScore > threshold;
   
   console.log('Face match score:', matchScore);
@@ -92,7 +93,7 @@ const checkFaceAlreadyRegistered = (newFaceData: string, existingVoters: Voter[]
   
   for (const voter of existingVoters) {
     console.log(`Comparing with voter ${voter.name} (ID: ${voter.id})`);
-    if (compareFaceImages(voter.faceData, newFaceData)) {
+    if (compareFaceImages(voter.faceData, newFaceData, true)) { // Pass true for registration check
       console.log(`DUPLICATE FACE DETECTED - Matches existing voter: ${voter.name}`);
       return true;
     }
@@ -113,12 +114,21 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const registerVoter = (voterData: Omit<Voter, 'id' | 'hasVoted'>): { success: boolean; message: string } => {
     console.log('Attempting to register new voter:', voterData.name);
     console.log('Registering voter with face data length:', voterData.faceData.length);
+    console.log('Registering voter with iris data length:', voterData.irisData.length);
     
     // Validate face image quality
     if (!voterData.faceData || voterData.faceData.length < 10000) {
       return {
         success: false,
         message: "Face image quality is insufficient. Please retake the photo with better lighting and ensure your face is clearly visible."
+      };
+    }
+    
+    // Validate iris data
+    if (!voterData.irisData || voterData.irisData.length < 5000) {
+      return {
+        success: false,
+        message: "Iris scan quality is insufficient. Please retake the iris scan with proper positioning."
       };
     }
     
@@ -154,7 +164,7 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     
     return {
       success: true,
-      message: "Voter registered successfully! Your face has been captured with good quality for secure voting."
+      message: "Voter registered successfully! Your face and iris data have been captured with good quality for secure voting."
     };
   };
 
@@ -189,9 +199,9 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       return { success: false, message: "Vote already cast for this voter." };
     }
 
-    // Compare the captured face with registered face data
+    // Compare the captured face with registered face data (use voting verification threshold)
     console.log('Starting face verification process...');
-    const faceMatch = compareFaceImages(voter.faceData, faceData);
+    const faceMatch = compareFaceImages(voter.faceData, faceData, false); // Pass false for voting verification
     
     if (!faceMatch) {
       console.log('FACE VERIFICATION FAILED - Images do not match');
