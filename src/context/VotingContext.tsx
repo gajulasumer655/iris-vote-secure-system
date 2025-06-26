@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 interface Voter {
@@ -26,8 +27,6 @@ interface VotingContextType {
   addCandidate: (candidate: Omit<Candidate, 'id' | 'voteCount'>) => void;
   castVote: (candidateId: string, voterId: string) => boolean;
   verifyVoter: (aadhaar: string, voterId: string, name: string, faceData: string) => { success: boolean; message: string; voter?: Voter };
-  updateVoter: (voterId: string, updates: Partial<Omit<Voter, 'id'>>) => { success: boolean; message: string };
-  deleteVoter: (voterId: string) => { success: boolean; message: string };
   isAdminAuthenticated: boolean;
   authenticateAdmin: (username: string, password: string) => boolean;
   logoutAdmin: () => void;
@@ -43,9 +42,9 @@ export const useVoting = () => {
   return context;
 };
 
-// Strict face matching algorithm that ensures only identical faces pass
+// Enhanced face matching function with better similarity detection
 const compareFaceImages = (registeredFaceData: string, currentFaceData: string, isForRegistration: boolean = false): boolean => {
-  console.log('=== STRICT FACE COMPARISON START ===');
+  console.log('Comparing face images...');
   console.log('Registered face data length:', registeredFaceData.length);
   console.log('Current face data length:', currentFaceData.length);
   console.log('Is for registration check:', isForRegistration);
@@ -62,18 +61,18 @@ const compareFaceImages = (registeredFaceData: string, currentFaceData: string, 
   };
   
   if (!isValidBase64Image(registeredFaceData) || !isValidBase64Image(currentFaceData)) {
-    console.log('Invalid image data format - REJECTED');
+    console.log('Invalid image data format');
     return false;
   }
   
-  // Very strict minimum image size check
-  const minImageSize = 10000; // Increased minimum size
+  // Check minimum image size for quality assurance
+  const minImageSize = 10000; // Minimum base64 string length for decent quality
   if (registeredFaceData.length < minImageSize || currentFaceData.length < minImageSize) {
-    console.log('Image quality too low - REJECTED');
+    console.log('Image quality too low - insufficient data');
     return false;
   }
   
-  // Extract base64 data without the data URL prefix
+  // Extract base64 data without the data URL prefix for comparison
   const getBase64Data = (dataUrl: string) => {
     const base64Index = dataUrl.indexOf('base64,');
     return base64Index !== -1 ? dataUrl.substring(base64Index + 7) : dataUrl;
@@ -82,175 +81,61 @@ const compareFaceImages = (registeredFaceData: string, currentFaceData: string, 
   const registeredBase64 = getBase64Data(registeredFaceData);
   const currentBase64 = getBase64Data(currentFaceData);
   
-  // Ultra-strict face matching algorithm
-  const calculateStrictFaceSimilarity = (data1: string, data2: string): number => {
-    console.log('Calculating STRICT face similarity...');
-    
-    // 1. Very strict length similarity (images from same person should be similar size)
+  // Calculate similarity based on base64 data comparison
+  const calculateSimilarity = (data1: string, data2: string): number => {
+    // If lengths are very different, likely different images
     const lengthRatio = Math.min(data1.length, data2.length) / Math.max(data1.length, data2.length);
-    console.log('Length ratio:', lengthRatio);
-    
-    // For registration, length must be very similar (same person, similar conditions)
-    if (isForRegistration && lengthRatio < 0.90) {
-      console.log('Length difference too large - REJECTED');
+    if (lengthRatio < 0.7) {
+      console.log('Length ratio too different:', lengthRatio);
       return 0;
     }
     
-    // For voting, still need reasonable similarity
-    if (!isForRegistration && lengthRatio < 0.80) {
-      console.log('Length difference too large for voting - REJECTED');
-      return 0;
-    }
+    // Sample characters at regular intervals for comparison
+    const sampleSize = Math.min(1000, Math.min(data1.length, data2.length));
+    const step1 = Math.floor(data1.length / sampleSize);
+    const step2 = Math.floor(data2.length / sampleSize);
     
-    // 2. Critical header analysis - JPEG structure must be very similar
-    const headerLength = Math.min(500, Math.min(data1.length, data2.length));
-    let headerMatches = 0;
-    
-    for (let i = 0; i < headerLength; i++) {
-      if (data1[i] === data2[i]) {
-        headerMatches++;
+    let matches = 0;
+    for (let i = 0; i < sampleSize; i++) {
+      const char1 = data1[i * step1];
+      const char2 = data2[i * step2];
+      if (char1 === char2) {
+        matches++;
       }
     }
     
-    const headerSimilarity = headerLength > 0 ? headerMatches / headerLength : 0;
-    console.log('Header similarity:', headerSimilarity);
-    
-    // Header must be VERY similar for same person
-    if (headerSimilarity < 0.85) {
-      console.log('Header similarity too low - REJECTED');
-      return 0;
-    }
-    
-    // 3. Multiple segment analysis with high precision
-    const analyzeSegments = (str1: string, str2: string, numSegments: number = 10) => {
-      const segmentSize = Math.floor(Math.min(str1.length, str2.length) / numSegments);
-      let totalSimilarity = 0;
-      
-      for (let i = 0; i < numSegments; i++) {
-        const start = i * segmentSize;
-        const end = start + segmentSize;
-        
-        const segment1 = str1.substring(start, end);
-        const segment2 = str2.substring(start, end);
-        
-        let matches = 0;
-        const minLength = Math.min(segment1.length, segment2.length);
-        
-        for (let j = 0; j < minLength; j++) {
-          if (segment1[j] === segment2[j]) {
-            matches++;
-          }
-        }
-        
-        totalSimilarity += minLength > 0 ? matches / minLength : 0;
-      }
-      
-      return totalSimilarity / numSegments;
-    };
-    
-    const segmentSimilarity = analyzeSegments(data1, data2);
-    console.log('Segment similarity:', segmentSimilarity);
-    
-    // 4. Character frequency analysis
-    const getCharacterFrequency = (str: string) => {
-      const freq: { [key: string]: number } = {};
-      // Sample every 5th character to speed up processing
-      for (let i = 0; i < str.length; i += 5) {
-        const char = str[i];
-        freq[char] = (freq[char] || 0) + 1;
-      }
-      return freq;
-    };
-    
-    const freq1 = getCharacterFrequency(data1);
-    const freq2 = getCharacterFrequency(data2);
-    
-    const allChars = new Set([...Object.keys(freq1), ...Object.keys(freq2)]);
-    let frequencyScore = 0;
-    
-    for (const char of allChars) {
-      const f1 = freq1[char] || 0;
-      const f2 = freq2[char] || 0;
-      const maxFreq = Math.max(f1, f2);
-      
-      if (maxFreq > 0) {
-        frequencyScore += Math.min(f1, f2) / maxFreq;
-      }
-    }
-    
-    const frequencySimilarity = allChars.size > 0 ? frequencyScore / allChars.size : 0;
-    console.log('Frequency similarity:', frequencySimilarity);
-    
-    // 5. End-to-end comparison for final verification
-    const endSize = Math.min(200, Math.min(data1.length, data2.length));
-    const tailStart1 = data1.length - endSize;
-    const tailStart2 = data2.length - endSize;
-    
-    let tailMatches = 0;
-    for (let i = 0; i < endSize; i++) {
-      if (data1[tailStart1 + i] === data2[tailStart2 + i]) {
-        tailMatches++;
-      }
-    }
-    
-    const tailSimilarity = endSize > 0 ? tailMatches / endSize : 0;
-    console.log('Tail similarity:', tailSimilarity);
-    
-    // Weighted combination with very strict requirements
-    const combinedScore = (
-      lengthRatio * 0.15 +
-      headerSimilarity * 0.35 +
-      segmentSimilarity * 0.30 +
-      frequencySimilarity * 0.10 +
-      tailSimilarity * 0.10
-    );
-    
-    console.log('Combined similarity score:', combinedScore);
-    return combinedScore;
+    return matches / sampleSize;
   };
   
-  const similarity = calculateStrictFaceSimilarity(registeredBase64, currentBase64);
-  console.log('Final calculated similarity score:', similarity);
+  const similarity = calculateSimilarity(registeredBase64, currentBase64);
+  console.log('Calculated similarity score:', similarity);
   
-  // VERY STRICT thresholds - only allow very high similarity
-  const threshold = isForRegistration ? 0.85 : 0.80; // Much higher thresholds
-  const isMatch = similarity >= threshold;
+  // For registration duplicate check, use stricter threshold
+  // For voting verification, use more lenient threshold
+  const threshold = isForRegistration ? 0.85 : 0.6; // Much stricter for registration
+  const isMatch = similarity > threshold;
   
-  console.log('Threshold used:', threshold);
+  console.log('Threshold:', threshold);
   console.log('Face match result:', isMatch);
-  
-  if (!isMatch) {
-    console.log('FACE VERIFICATION FAILED - Similarity too low');
-    console.log('Required similarity:', threshold);
-    console.log('Actual similarity:', similarity);
-  } else {
-    console.log('FACE VERIFICATION PASSED - High similarity detected');
-  }
-  
-  console.log('=== STRICT FACE COMPARISON END ===');
   
   return isMatch;
 };
 
 // Function to check if a face is already registered
 const checkFaceAlreadyRegistered = (newFaceData: string, existingVoters: Voter[]): boolean => {
-  console.log('=== CHECKING FACE REGISTRATION STATUS ===');
+  console.log('Checking if face is already registered...');
   console.log('New face data length:', newFaceData.length);
   console.log('Existing voters count:', existingVoters.length);
   
   for (const voter of existingVoters) {
-    console.log(`Comparing with voter: ${voter.name} (ID: ${voter.id})`);
-    console.log(`Stored face data length: ${voter.faceData.length}`);
-    
-    if (compareFaceImages(voter.faceData, newFaceData, true)) {
+    console.log(`Comparing with voter ${voter.name} (ID: ${voter.id})`);
+    if (compareFaceImages(voter.faceData, newFaceData, true)) { // Pass true for registration check
       console.log(`DUPLICATE FACE DETECTED - Matches existing voter: ${voter.name}`);
-      console.log('=== BLOCKING DUPLICATE REGISTRATION ===');
       return true;
     }
   }
   
   console.log('No duplicate face found - registration allowed');
-  console.log('=== FACE CHECK COMPLETE ===');
   return false;
 };
 
@@ -263,23 +148,23 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
 
   const registerVoter = (voterData: Omit<Voter, 'id' | 'hasVoted'>): { success: boolean; message: string } => {
-    console.log('=== VOTER REGISTRATION ATTEMPT ===');
     console.log('Attempting to register new voter:', voterData.name);
-    console.log('Face data length:', voterData.faceData.length);
-    console.log('Iris data length:', voterData.irisData.length);
+    console.log('Registering voter with face data length:', voterData.faceData.length);
+    console.log('Registering voter with iris data length:', voterData.irisData.length);
     
-    // Basic validation
-    if (!voterData.faceData || voterData.faceData.length < 8000) {
+    // Validate face image quality
+    if (!voterData.faceData || voterData.faceData.length < 10000) {
       return {
         success: false,
         message: "Face image quality is insufficient. Please retake the photo with better lighting and ensure your face is clearly visible."
       };
     }
     
+    // Validate iris data
     if (!voterData.irisData || voterData.irisData.length < 5000) {
       return {
         success: false,
-        message: "Iris scan quality is insufficient. Please retake the iris scan with better positioning."
+        message: "Iris scan quality is insufficient. Please retake the iris scan with proper positioning."
       };
     }
     
@@ -290,19 +175,17 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     );
     
     if (existingVoter) {
-      console.log('Duplicate Aadhaar/Voter ID found:', existingVoter.name);
       return {
         success: false,
         message: "Aadhaar number or Voter ID already registered. Each citizen can only register once."
       };
     }
     
-    // Check if face is already registered with strict algorithm
-    console.log('=== STARTING STRICT DUPLICATE FACE CHECK ===');
+    // Check if face is already registered (most important check)
     if (checkFaceAlreadyRegistered(voterData.faceData, voters)) {
       return {
         success: false,
-        message: "This face is already registered in our system. Duplicate registrations are not allowed. If you believe this is an error, please contact the election office."
+        message: "This face is already registered with another voter account. Duplicate registrations are not allowed. Please contact support if you believe this is an error."
       };
     }
     
@@ -314,12 +197,10 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     
     setVoters(prev => [...prev, newVoter]);
     console.log('Voter registered successfully:', newVoter.name);
-    console.log('Total voters now:', voters.length + 1);
-    console.log('=== REGISTRATION COMPLETE ===');
     
     return {
       success: true,
-      message: "Voter registered successfully! Your biometric data has been securely recorded."
+      message: "Voter registered successfully! Your face and iris data have been captured securely for voting verification."
     };
   };
 
@@ -332,155 +213,56 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setCandidates(prev => [...prev, newCandidate]);
   };
 
-  const updateVoter = (voterId: string, updates: Partial<Omit<Voter, 'id'>>): { success: boolean; message: string } => {
-    console.log('=== UPDATING VOTER ===');
-    console.log('Voter ID:', voterId);
-    console.log('Updates:', updates);
-    
-    const voterIndex = voters.findIndex(v => v.id === voterId);
-    
-    if (voterIndex === -1) {
-      return {
-        success: false,
-        message: "Voter not found."
-      };
-    }
-    
-    // Check for duplicate Aadhaar or Voter ID if those fields are being updated
-    if (updates.aadhaarNumber || updates.voterId) {
-      const duplicateVoter = voters.find(v => 
-        v.id !== voterId && (
-          (updates.aadhaarNumber && v.aadhaarNumber === updates.aadhaarNumber) ||
-          (updates.voterId && v.voterId === updates.voterId)
-        )
-      );
-      
-      if (duplicateVoter) {
-        return {
-          success: false,
-          message: "Aadhaar number or Voter ID already exists for another voter."
-        };
-      }
-    }
-    
-    setVoters(prev => prev.map(v => 
-      v.id === voterId ? { ...v, ...updates } : v
-    ));
-    
-    console.log('Voter updated successfully');
-    return {
-      success: true,
-      message: "Voter information updated successfully."
-    };
-  };
-
-  const deleteVoter = (voterId: string): { success: boolean; message: string } => {
-    console.log('=== DELETING VOTER ===');
-    console.log('Voter ID:', voterId);
-    
-    const voter = voters.find(v => v.id === voterId);
-    
-    if (!voter) {
-      return {
-        success: false,
-        message: "Voter not found."
-      };
-    }
-    
-    setVoters(prev => prev.filter(v => v.id !== voterId));
-    
-    console.log('Voter deleted successfully:', voter.name);
-    return {
-      success: true,
-      message: "Voter deleted successfully."
-    };
-  };
-
   const verifyVoter = (aadhaar: string, voterId: string, name: string, faceData: string) => {
-    console.log('=== STRICT VOTER VERIFICATION ATTEMPT ===');
     console.log('Verifying voter with:', { aadhaar, voterId, name });
     console.log('Received face data length:', faceData.length);
     
-    // Find voter by exact credentials
     const voter = voters.find(v => 
       v.aadhaarNumber === aadhaar && 
       v.voterId === voterId && 
-      v.name.toLowerCase().trim() === name.toLowerCase().trim()
+      v.name.toLowerCase() === name.toLowerCase()
     );
 
     if (!voter) {
-      console.log('Voter not found in database with provided credentials');
-      return { 
-        success: false, 
-        message: "Voter details not found. Please check your Aadhaar number, Voter ID, and name exactly as registered."
-      };
+      console.log('Voter not found in database');
+      return { success: false, message: "Voter details not found. Please check your information and ensure you are registered." };
     }
 
-    console.log('Voter found in database:', voter.name);
-    console.log('Checking if voter has already voted:', voter.hasVoted);
-    
-    // Check if voter has already voted
-    if (voter.hasVoted) {
-      console.log('Voter has already cast their vote');
-      return { 
-        success: false, 
-        message: "You have already cast your vote. Each voter can only vote once per election."
-      };
-    }
-
-    console.log('Voter has not voted yet, proceeding with STRICT face verification...');
+    console.log('Voter found, checking if already voted:', voter.hasVoted);
     console.log('Stored face data length:', voter.faceData.length);
-    console.log('Current face data length:', faceData.length);
     
-    // Perform STRICT face verification
-    const faceMatch = compareFaceImages(voter.faceData, faceData, false);
+    if (voter.hasVoted) {
+      return { success: false, message: "You have already cast your vote. Multiple voting is not allowed." };
+    }
+
+    // Compare the captured face with registered face data (use voting verification threshold)
+    console.log('Starting face verification process...');
+    const faceMatch = compareFaceImages(voter.faceData, faceData, false); // Pass false for voting verification
     
     if (!faceMatch) {
-      console.log('STRICT FACE VERIFICATION FAILED - Access DENIED');
+      console.log('FACE VERIFICATION FAILED - Images do not match');
       return { 
         success: false, 
-        message: "Face verification failed. Your face does not match the registered image. Please ensure proper lighting and positioning, or contact the election office if you believe this is an error."
+        message: "Face verification failed. The captured image does not match your registered face data. Please ensure proper lighting and try again. If the issue persists, contact support." 
       };
     }
 
-    console.log('STRICT FACE VERIFICATION SUCCESSFUL - Access GRANTED');
-    console.log('=== VERIFICATION COMPLETE ===');
-    return { 
-      success: true, 
-      message: "Identity verified successfully! You are now authorized to cast your vote.", 
-      voter 
-    };
+    console.log('FACE VERIFICATION SUCCESSFUL - Access granted');
+    return { success: true, message: "Face verified successfully. You are now authorized to cast your vote.", voter };
   };
 
   const castVote = (candidateId: string, voterId: string) => {
-    console.log('=== CASTING VOTE ===');
-    console.log('Attempting to cast vote for candidate:', candidateId);
-    console.log('Voter ID:', voterId);
-    
     const voter = voters.find(v => v.id === voterId);
-    
-    if (!voter) {
-      console.log('Voter not found for vote casting');
-      return false;
-    }
-    
-    if (voter.hasVoted) {
-      console.log('Voter has already voted - preventing duplicate vote');
-      return false;
-    }
+    if (!voter || voter.hasVoted) return false;
 
-    // Mark voter as having voted
     setVoters(prev => prev.map(v => 
       v.id === voterId ? { ...v, hasVoted: true } : v
     ));
 
-    // Increment candidate vote count
     setCandidates(prev => prev.map(c => 
       c.id === candidateId ? { ...c, voteCount: c.voteCount + 1 } : c
     ));
 
-    console.log('Vote cast successfully for voter:', voter.name);
-    console.log('=== VOTE CASTING COMPLETE ===');
     return true;
   };
 
@@ -504,8 +286,6 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       addCandidate,
       castVote,
       verifyVoter,
-      updateVoter,
-      deleteVoter,
       isAdminAuthenticated,
       authenticateAdmin,
       logoutAdmin,
