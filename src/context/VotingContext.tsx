@@ -42,7 +42,7 @@ export const useVoting = () => {
   return context;
 };
 
-// Improved face matching function with stricter duplicate detection
+// Enhanced face matching function with better similarity detection
 const compareFaceImages = (registeredFaceData: string, currentFaceData: string, isForRegistration: boolean = false): boolean => {
   console.log('Comparing face images...');
   console.log('Registered face data length:', registeredFaceData.length);
@@ -72,13 +72,49 @@ const compareFaceImages = (registeredFaceData: string, currentFaceData: string, 
     return false;
   }
   
+  // Extract base64 data without the data URL prefix for comparison
+  const getBase64Data = (dataUrl: string) => {
+    const base64Index = dataUrl.indexOf('base64,');
+    return base64Index !== -1 ? dataUrl.substring(base64Index + 7) : dataUrl;
+  };
+  
+  const registeredBase64 = getBase64Data(registeredFaceData);
+  const currentBase64 = getBase64Data(currentFaceData);
+  
+  // Calculate similarity based on base64 data comparison
+  const calculateSimilarity = (data1: string, data2: string): number => {
+    // If lengths are very different, likely different images
+    const lengthRatio = Math.min(data1.length, data2.length) / Math.max(data1.length, data2.length);
+    if (lengthRatio < 0.7) {
+      console.log('Length ratio too different:', lengthRatio);
+      return 0;
+    }
+    
+    // Sample characters at regular intervals for comparison
+    const sampleSize = Math.min(1000, Math.min(data1.length, data2.length));
+    const step1 = Math.floor(data1.length / sampleSize);
+    const step2 = Math.floor(data2.length / sampleSize);
+    
+    let matches = 0;
+    for (let i = 0; i < sampleSize; i++) {
+      const char1 = data1[i * step1];
+      const char2 = data2[i * step2];
+      if (char1 === char2) {
+        matches++;
+      }
+    }
+    
+    return matches / sampleSize;
+  };
+  
+  const similarity = calculateSimilarity(registeredBase64, currentBase64);
+  console.log('Calculated similarity score:', similarity);
+  
   // For registration duplicate check, use stricter threshold
   // For voting verification, use more lenient threshold
-  const matchScore = Math.random();
-  const threshold = isForRegistration ? 0.8 : 0.3; // Much stricter for registration
-  const isMatch = matchScore > threshold;
+  const threshold = isForRegistration ? 0.85 : 0.6; // Much stricter for registration
+  const isMatch = similarity > threshold;
   
-  console.log('Face match score:', matchScore);
   console.log('Threshold:', threshold);
   console.log('Face match result:', isMatch);
   
@@ -132,15 +168,7 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       };
     }
     
-    // Check if face is already registered
-    if (checkFaceAlreadyRegistered(voterData.faceData, voters)) {
-      return {
-        success: false,
-        message: "Face already registered! This face is already associated with another voter registration. Please contact support if you believe this is an error."
-      };
-    }
-    
-    // Check for duplicate Aadhaar or Voter ID
+    // Check for duplicate Aadhaar or Voter ID first
     const existingVoter = voters.find(v => 
       v.aadhaarNumber === voterData.aadhaarNumber || 
       v.voterId === voterData.voterId
@@ -150,6 +178,14 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       return {
         success: false,
         message: "Aadhaar number or Voter ID already registered. Each citizen can only register once."
+      };
+    }
+    
+    // Check if face is already registered (most important check)
+    if (checkFaceAlreadyRegistered(voterData.faceData, voters)) {
+      return {
+        success: false,
+        message: "This face is already registered with another voter account. Duplicate registrations are not allowed. Please contact support if you believe this is an error."
       };
     }
     
@@ -164,7 +200,7 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     
     return {
       success: true,
-      message: "Voter registered successfully! Your face and iris data have been captured with good quality for secure voting."
+      message: "Voter registered successfully! Your face and iris data have been captured securely for voting verification."
     };
   };
 
@@ -189,14 +225,14 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     if (!voter) {
       console.log('Voter not found in database');
-      return { success: false, message: "Voter details not found. Please register first." };
+      return { success: false, message: "Voter details not found. Please check your information and ensure you are registered." };
     }
 
     console.log('Voter found, checking if already voted:', voter.hasVoted);
     console.log('Stored face data length:', voter.faceData.length);
     
     if (voter.hasVoted) {
-      return { success: false, message: "Vote already cast for this voter." };
+      return { success: false, message: "You have already cast your vote. Multiple voting is not allowed." };
     }
 
     // Compare the captured face with registered face data (use voting verification threshold)
@@ -205,11 +241,14 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     
     if (!faceMatch) {
       console.log('FACE VERIFICATION FAILED - Images do not match');
-      return { success: false, message: "Face verification failed. The captured image does not match your registered face data. Please try again or contact support." };
+      return { 
+        success: false, 
+        message: "Face verification failed. The captured image does not match your registered face data. Please ensure proper lighting and try again. If the issue persists, contact support." 
+      };
     }
 
     console.log('FACE VERIFICATION SUCCESSFUL - Access granted');
-    return { success: true, message: "Voter verified successfully.", voter };
+    return { success: true, message: "Face verified successfully. You are now authorized to cast your vote.", voter };
   };
 
   const castVote = (candidateId: string, voterId: string) => {
