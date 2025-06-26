@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 interface Voter {
@@ -26,6 +27,8 @@ interface VotingContextType {
   addCandidate: (candidate: Omit<Candidate, 'id' | 'voteCount'>) => void;
   castVote: (candidateId: string, voterId: string) => boolean;
   verifyVoter: (aadhaar: string, voterId: string, name: string, faceData: string) => { success: boolean; message: string; voter?: Voter };
+  updateVoter: (voterId: string, updates: Partial<Omit<Voter, 'id'>>) => { success: boolean; message: string };
+  deleteVoter: (voterId: string) => { success: boolean; message: string };
   isAdminAuthenticated: boolean;
   authenticateAdmin: (username: string, password: string) => boolean;
   logoutAdmin: () => void;
@@ -41,7 +44,7 @@ export const useVoting = () => {
   return context;
 };
 
-// Improved face matching with more practical thresholds and better algorithms
+// Improved face matching algorithm with better accuracy
 const compareFaceImages = (registeredFaceData: string, currentFaceData: string, isForRegistration: boolean = false): boolean => {
   console.log('=== FACE COMPARISON START ===');
   console.log('Registered face data length:', registeredFaceData.length);
@@ -64,8 +67,8 @@ const compareFaceImages = (registeredFaceData: string, currentFaceData: string, 
     return false;
   }
   
-  // More lenient minimum image size check
-  const minImageSize = 5000; // Reduced from 10000 for better compatibility
+  // More strict minimum image size check for better quality
+  const minImageSize = 8000;
   if (registeredFaceData.length < minImageSize || currentFaceData.length < minImageSize) {
     console.log('Image quality too low - insufficient data');
     return false;
@@ -80,25 +83,40 @@ const compareFaceImages = (registeredFaceData: string, currentFaceData: string, 
   const registeredBase64 = getBase64Data(registeredFaceData);
   const currentBase64 = getBase64Data(currentFaceData);
   
-  // Practical similarity calculation optimized for real-world face matching
-  const calculatePracticalSimilarity = (data1: string, data2: string): number => {
-    console.log('Calculating practical face similarity...');
+  // Enhanced similarity calculation with better accuracy
+  const calculateAdvancedSimilarity = (data1: string, data2: string): number => {
+    console.log('Calculating advanced face similarity...');
     
-    // Method 1: More lenient length similarity check
+    // Method 1: Strict length similarity check
     const lengthRatio = Math.min(data1.length, data2.length) / Math.max(data1.length, data2.length);
     console.log('Length ratio:', lengthRatio);
     
-    // Accept more variation in image sizes (reduced from 0.8 to 0.6)
-    if (lengthRatio < 0.6) {
-      console.log('Length difference acceptable for face matching');
+    // More strict length check for registration
+    if (isForRegistration && lengthRatio < 0.85) {
+      console.log('Length difference too large for face matching');
+      return 0;
     }
     
-    // Method 2: Smart sampling for large images (more efficient)
-    const getSamplePoints = (str: string, numSamples: number = 50) => {
+    // Method 2: Header analysis (critical for JPEG structure)
+    const headerLength = Math.min(300, Math.min(data1.length, data2.length));
+    let headerMatches = 0;
+    
+    for (let i = 0; i < headerLength; i++) {
+      if (data1[i] === data2[i]) {
+        headerMatches++;
+      }
+    }
+    
+    const headerSimilarity = headerLength > 0 ? headerMatches / headerLength : 0;
+    console.log('Header similarity:', headerSimilarity);
+    
+    // Method 3: Multiple sample point analysis
+    const getSamplePoints = (str: string, numSamples: number = 20) => {
       const samples = [];
       const step = Math.floor(str.length / numSamples);
       for (let i = 0; i < str.length; i += step) {
-        samples.push(str.substring(i, i + 20)); // Take 20-character chunks
+        const endPos = Math.min(i + 50, str.length);
+        samples.push(str.substring(i, endPos));
       }
       return samples;
     };
@@ -106,15 +124,13 @@ const compareFaceImages = (registeredFaceData: string, currentFaceData: string, 
     const samples1 = getSamplePoints(data1);
     const samples2 = getSamplePoints(data2);
     
-    // Method 3: Pattern matching with fuzzy comparison
-    let patternMatches = 0;
+    let totalSampleSimilarity = 0;
     const maxSamples = Math.min(samples1.length, samples2.length);
     
     for (let i = 0; i < maxSamples; i++) {
       const sample1 = samples1[i];
       const sample2 = samples2[i];
       
-      // Calculate character-level similarity for this sample
       let charMatches = 0;
       const minLength = Math.min(sample1.length, sample2.length);
       
@@ -124,45 +140,16 @@ const compareFaceImages = (registeredFaceData: string, currentFaceData: string, 
         }
       }
       
-      const sampleSimilarity = charMatches / minLength;
-      patternMatches += sampleSimilarity;
+      totalSampleSimilarity += minLength > 0 ? charMatches / minLength : 0;
     }
     
-    const avgPatternSimilarity = maxSamples > 0 ? patternMatches / maxSamples : 0;
-    console.log('Average pattern similarity:', avgPatternSimilarity);
+    const avgSampleSimilarity = maxSamples > 0 ? totalSampleSimilarity / maxSamples : 0;
+    console.log('Average sample similarity:', avgSampleSimilarity);
     
-    // Method 4: Header and footer analysis (JPEG structure comparison)
-    const headerLength = Math.min(200, Math.min(data1.length, data2.length));
-    const footerLength = Math.min(100, Math.min(data1.length, data2.length));
-    
-    let headerMatches = 0;
-    let footerMatches = 0;
-    
-    // Compare headers (JPEG headers should be similar)
-    for (let i = 0; i < headerLength; i++) {
-      if (data1[i] === data2[i]) {
-        headerMatches++;
-      }
-    }
-    
-    // Compare footers
-    for (let i = 0; i < footerLength; i++) {
-      const pos1 = data1.length - 1 - i;
-      const pos2 = data2.length - 1 - i;
-      if (pos1 >= 0 && pos2 >= 0 && data1[pos1] === data2[pos2]) {
-        footerMatches++;
-      }
-    }
-    
-    const headerSimilarity = headerLength > 0 ? headerMatches / headerLength : 0;
-    const footerSimilarity = footerLength > 0 ? footerMatches / footerLength : 0;
-    
-    console.log('Header similarity:', headerSimilarity);
-    console.log('Footer similarity:', footerSimilarity);
-    
-    // Method 5: Frequency analysis (character distribution)
-    const getCharFrequency = (str: string, sampleSize: number = 2000) => {
+    // Method 4: Frequency distribution analysis
+    const getCharFrequency = (str: string) => {
       const freq: { [key: string]: number } = {};
+      const sampleSize = Math.min(1000, str.length);
       const step = Math.max(1, Math.floor(str.length / sampleSize));
       
       for (let i = 0; i < str.length; i += step) {
@@ -194,24 +181,23 @@ const compareFaceImages = (registeredFaceData: string, currentFaceData: string, 
     const frequencySimilarity = totalComparisons > 0 ? frequencyScore / totalComparisons : 0;
     console.log('Frequency similarity:', frequencySimilarity);
     
-    // Weighted combination optimized for face matching
+    // Weighted combination with emphasis on structural similarity
     const combinedScore = (
-      lengthRatio * 0.15 +           // Less weight on length
-      headerSimilarity * 0.25 +      // More weight on structure
-      footerSimilarity * 0.10 +      // Some weight on endings
-      avgPatternSimilarity * 0.35 +  // Heavy weight on pattern matching
-      frequencySimilarity * 0.15     // Moderate weight on frequency
+      lengthRatio * 0.20 +
+      headerSimilarity * 0.40 +
+      avgSampleSimilarity * 0.30 +
+      frequencySimilarity * 0.10
     );
     
     console.log('Combined similarity score:', combinedScore);
     return combinedScore;
   };
   
-  const similarity = calculatePracticalSimilarity(registeredBase64, currentBase64);
+  const similarity = calculateAdvancedSimilarity(registeredBase64, currentBase64);
   console.log('Final calculated similarity score:', similarity);
   
-  // More practical thresholds based on real-world testing
-  const threshold = isForRegistration ? 0.45 : 0.35; // Much more lenient thresholds
+  // More conservative thresholds to prevent false positives
+  const threshold = isForRegistration ? 0.75 : 0.55; // Higher thresholds for better accuracy
   const isMatch = similarity > threshold;
   
   console.log('Threshold used:', threshold);
@@ -221,7 +207,7 @@ const compareFaceImages = (registeredFaceData: string, currentFaceData: string, 
   return isMatch;
 };
 
-// Function to check if a face is already registered with enhanced logging
+// Function to check if a face is already registered
 const checkFaceAlreadyRegistered = (newFaceData: string, existingVoters: Voter[]): boolean => {
   console.log('=== CHECKING FACE REGISTRATION STATUS ===');
   console.log('New face data length:', newFaceData.length);
@@ -286,7 +272,7 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       };
     }
     
-    // CRITICAL: Check if face is already registered (most important check)
+    // Check if face is already registered with improved algorithm
     console.log('=== STARTING DUPLICATE FACE CHECK ===');
     if (checkFaceAlreadyRegistered(voterData.faceData, voters)) {
       return {
@@ -319,6 +305,70 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       voteCount: 0,
     };
     setCandidates(prev => [...prev, newCandidate]);
+  };
+
+  const updateVoter = (voterId: string, updates: Partial<Omit<Voter, 'id'>>): { success: boolean; message: string } => {
+    console.log('=== UPDATING VOTER ===');
+    console.log('Voter ID:', voterId);
+    console.log('Updates:', updates);
+    
+    const voterIndex = voters.findIndex(v => v.id === voterId);
+    
+    if (voterIndex === -1) {
+      return {
+        success: false,
+        message: "Voter not found."
+      };
+    }
+    
+    // Check for duplicate Aadhaar or Voter ID if those fields are being updated
+    if (updates.aadhaarNumber || updates.voterId) {
+      const duplicateVoter = voters.find(v => 
+        v.id !== voterId && (
+          (updates.aadhaarNumber && v.aadhaarNumber === updates.aadhaarNumber) ||
+          (updates.voterId && v.voterId === updates.voterId)
+        )
+      );
+      
+      if (duplicateVoter) {
+        return {
+          success: false,
+          message: "Aadhaar number or Voter ID already exists for another voter."
+        };
+      }
+    }
+    
+    setVoters(prev => prev.map(v => 
+      v.id === voterId ? { ...v, ...updates } : v
+    ));
+    
+    console.log('Voter updated successfully');
+    return {
+      success: true,
+      message: "Voter information updated successfully."
+    };
+  };
+
+  const deleteVoter = (voterId: string): { success: boolean; message: string } => {
+    console.log('=== DELETING VOTER ===');
+    console.log('Voter ID:', voterId);
+    
+    const voter = voters.find(v => v.id === voterId);
+    
+    if (!voter) {
+      return {
+        success: false,
+        message: "Voter not found."
+      };
+    }
+    
+    setVoters(prev => prev.filter(v => v.id !== voterId));
+    
+    console.log('Voter deleted successfully:', voter.name);
+    return {
+      success: true,
+      message: "Voter deleted successfully."
+    };
   };
 
   const verifyVoter = (aadhaar: string, voterId: string, name: string, faceData: string) => {
@@ -429,6 +479,8 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       addCandidate,
       castVote,
       verifyVoter,
+      updateVoter,
+      deleteVoter,
       isAdminAuthenticated,
       authenticateAdmin,
       logoutAdmin,
