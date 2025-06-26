@@ -67,7 +67,9 @@ const VoteCasting = () => {
       stream?.getTracks().forEach(track => track.stop());
       setIsCapturing(false);
 
-      // Verify voter
+      console.log('Attempting to verify voter...');
+      
+      // Verify voter with face matching
       const result = verifyVoter(
         loginData.aadhaarNumber,
         loginData.voterId,
@@ -80,17 +82,19 @@ const VoteCasting = () => {
         setStep('vote');
         toast({
           title: "Verification Successful",
-          description: "You are eligible to vote.",
+          description: "Face verified successfully. You are eligible to vote.",
         });
       } else {
+        // Show specific error message for face mismatch or other issues
         toast({
           title: "Verification Failed",
           description: result.message,
           variant: "destructive",
         });
-        // Reset to login
+        // Reset to login for retry
         setStep('login');
         setLoginData({ name: '', aadhaarNumber: '', voterId: '' });
+        setFaceCapture(null);
       }
     }
   };
@@ -184,10 +188,17 @@ const VoteCasting = () => {
           <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
             <CardTitle className="flex items-center space-x-2 text-2xl">
               <Camera className="h-6 w-6" />
-              <span>Biometric Verification</span>
+              <span>Face Verification</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="p-8 text-center">
+            <div className="mb-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
+              <p className="text-purple-800 text-sm">
+                <strong>Important:</strong> Your face will be compared with the image captured during registration. 
+                Please ensure your face is clearly visible and well-lit for accurate verification.
+              </p>
+            </div>
+            
             <p className="text-lg mb-6">Please capture your face for verification</p>
             
             {isCapturing ? (
@@ -202,7 +213,7 @@ const VoteCasting = () => {
                   className="bg-green-600 hover:bg-green-700"
                 >
                   <Camera className="h-4 w-4 mr-2" />
-                  Capture & Verify
+                  Capture & Verify Face
                 </Button>
               </div>
             ) : (

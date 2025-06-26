@@ -1,12 +1,14 @@
 
 import React, { useState } from 'react';
-import { Shield, Users, UserPlus, LogOut } from 'lucide-react';
+import { Shield, Users, UserPlus, LogOut, CheckCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { useVoting } from '../context/VotingContext';
+import VoterManagement from './VoterManagement';
 
 const AdminDashboard = () => {
   const { isAdminAuthenticated, authenticateAdmin, logoutAdmin, candidates, addCandidate, voters } = useVoting();
@@ -93,6 +95,9 @@ const AdminDashboard = () => {
     );
   }
 
+  const votedVoters = voters.filter(voter => voter.hasVoted);
+  const pendingVoters = voters.filter(voter => !voter.hasVoted);
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
@@ -140,6 +145,54 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Voter Management Section */}
+      <VoterManagement />
+
+      {/* Voters Who Cast Their Vote Section */}
+      <Card className="shadow-lg border-green-200">
+        <CardHeader className="bg-green-50">
+          <CardTitle className="flex items-center space-x-2 text-green-800">
+            <CheckCircle className="h-5 w-5" />
+            <span>Voters Who Have Cast Their Vote ({votedVoters.length})</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          {votedVoters.length === 0 ? (
+            <p className="text-gray-500 text-center py-4">No votes have been cast yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Aadhaar Number</TableHead>
+                    <TableHead>Voter ID</TableHead>
+                    <TableHead>Address</TableHead>
+                    <TableHead>Vote Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {votedVoters.map((voter) => (
+                    <TableRow key={voter.id} className="bg-green-50/50">
+                      <TableCell className="font-medium">{voter.name}</TableCell>
+                      <TableCell>{voter.aadhaarNumber}</TableCell>
+                      <TableCell>{voter.voterId}</TableCell>
+                      <TableCell className="max-w-xs truncate">{voter.address}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <span className="text-green-600 font-semibold">Vote Cast</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="shadow-lg">
         <CardHeader>
