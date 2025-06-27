@@ -61,9 +61,9 @@ const validateVoterIdFormat = (voterId: string): boolean => {
   return isFirstCharLetter && isLastCharNumber;
 };
 
-// Enhanced and more strict face matching algorithm
-const calculateFaceSimilarity = (face1: string, face2: string): number => {
-  console.log('=== CALCULATING FACE SIMILARITY ===');
+// Face matching algorithm for duplicate detection during registration (strict)
+const calculateRegistrationFaceSimilarity = (face1: string, face2: string): number => {
+  console.log('=== REGISTRATION FACE SIMILARITY CHECK ===');
   console.log('Face 1 length:', face1.length);
   console.log('Face 2 length:', face2.length);
   
@@ -92,12 +92,12 @@ const calculateFaceSimilarity = (face1: string, face2: string): number => {
   const data1 = getBase64(face1);
   const data2 = getBase64(face2);
   
-  // Strict length similarity check
+  // Strict length similarity check for registration
   const lengthRatio = Math.min(data1.length, data2.length) / Math.max(data1.length, data2.length);
   console.log('Length ratio:', lengthRatio);
   
-  if (lengthRatio < 0.9) {
-    console.log('Length difference too large - returning 0% similarity');
+  if (lengthRatio < 0.85) {
+    console.log('Length difference too large for registration - returning 0% similarity');
     return 0;
   }
   
@@ -114,8 +114,8 @@ const calculateFaceSimilarity = (face1: string, face2: string): number => {
   const headerSimilarity = headerMatches / headerLength;
   console.log('Header similarity:', headerSimilarity);
   
-  // More detailed segment analysis with overlapping segments
-  const numSegments = 20; // Increased for better precision
+  // Segment analysis
+  const numSegments = 15;
   const segmentSize = Math.floor(Math.min(data1.length, data2.length) / numSegments);
   let totalSegmentSimilarity = 0;
   
@@ -142,11 +142,103 @@ const calculateFaceSimilarity = (face1: string, face2: string): number => {
   const segmentSimilarity = totalSegmentSimilarity / numSegments;
   console.log('Segment similarity:', segmentSimilarity);
   
-  // Enhanced character frequency analysis
+  // Combined similarity score
+  const combinedScore = (
+    lengthRatio * 0.20 +
+    headerSimilarity * 0.50 +
+    segmentSimilarity * 0.30
+  );
+  
+  console.log('Registration combined similarity score:', combinedScore);
+  return combinedScore;
+};
+
+// Face matching algorithm for verification during voting (more lenient)
+const calculateVotingFaceSimilarity = (registeredFace: string, currentFace: string): number => {
+  console.log('=== VOTING FACE VERIFICATION ===');
+  console.log('Registered face length:', registeredFace.length);
+  console.log('Current face length:', currentFace.length);
+  
+  // If exact match, return 100% similarity
+  if (registeredFace === currentFace) {
+    console.log('EXACT MATCH DETECTED - 100% similarity');
+    return 1.0;
+  }
+  
+  // Validate both images are proper base64 data URLs
+  const isValidImage = (data: string) => {
+    return data.startsWith('data:image/') && data.includes('base64,') && data.length > 3000;
+  };
+  
+  if (!isValidImage(registeredFace) || !isValidImage(currentFace)) {
+    console.log('Invalid image format detected - returning 0% similarity');
+    return 0;
+  }
+  
+  // Extract base64 data
+  const getBase64 = (dataUrl: string) => {
+    const base64Index = dataUrl.indexOf('base64,');
+    return base64Index !== -1 ? dataUrl.substring(base64Index + 7) : dataUrl;
+  };
+  
+  const data1 = getBase64(registeredFace);
+  const data2 = getBase64(currentFace);
+  
+  // More lenient length check for voting
+  const lengthRatio = Math.min(data1.length, data2.length) / Math.max(data1.length, data2.length);
+  console.log('Length ratio:', lengthRatio);
+  
+  // Don't immediately fail on length difference for voting
+  let lengthScore = lengthRatio;
+  if (lengthRatio < 0.7) {
+    lengthScore = 0.3; // Give some base score even for different lengths
+  }
+  
+  // Header analysis (first 300 characters)
+  const headerLength = Math.min(300, Math.min(data1.length, data2.length));
+  let headerMatches = 0;
+  
+  for (let i = 0; i < headerLength; i++) {
+    if (data1[i] === data2[i]) {
+      headerMatches++;
+    }
+  }
+  
+  const headerSimilarity = headerMatches / headerLength;
+  console.log('Header similarity:', headerSimilarity);
+  
+  // Simplified segment analysis for voting
+  const numSegments = 10;
+  const segmentSize = Math.floor(Math.min(data1.length, data2.length) / numSegments);
+  let totalSegmentSimilarity = 0;
+  
+  for (let i = 0; i < numSegments; i++) {
+    const start = i * segmentSize;
+    const end = Math.min(start + segmentSize, Math.min(data1.length, data2.length));
+    
+    const segment1 = data1.substring(start, end);
+    const segment2 = data2.substring(start, end);
+    
+    let matches = 0;
+    const segmentLength = Math.min(segment1.length, segment2.length);
+    
+    for (let j = 0; j < segmentLength; j++) {
+      if (segment1[j] === segment2[j]) {
+        matches++;
+      }
+    }
+    
+    const segmentSim = segmentLength > 0 ? matches / segmentLength : 0;
+    totalSegmentSimilarity += segmentSim;
+  }
+  
+  const segmentSimilarity = totalSegmentSimilarity / numSegments;
+  console.log('Segment similarity:', segmentSimilarity);
+  
+  // Character frequency analysis for additional verification
   const getCharFrequency = (str: string) => {
     const freq: { [key: string]: number } = {};
-    // Sample every 3rd character for better distribution analysis
-    for (let i = 0; i < str.length; i += 3) {
+    for (let i = 0; i < str.length; i += 5) {
       const char = str[i];
       freq[char] = (freq[char] || 0) + 1;
     }
@@ -172,34 +264,15 @@ const calculateFaceSimilarity = (face1: string, face2: string): number => {
   const frequencySimilarity = allChars.size > 0 ? frequencyScore / allChars.size : 0;
   console.log('Frequency similarity:', frequencySimilarity);
   
-  // Hash-based similarity for additional verification
-  const getHash = (str: string) => {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    return hash;
-  };
-  
-  const hash1 = getHash(data1);
-  const hash2 = getHash(data2);
-  const hashSimilarity = hash1 === hash2 ? 1.0 : 0.0;
-  console.log('Hash similarity:', hashSimilarity);
-  
-  // Weighted combined similarity score with stricter weights
+  // Weighted combined similarity score (more balanced for voting)
   const combinedScore = (
-    lengthRatio * 0.10 +
-    headerSimilarity * 0.40 +
+    lengthScore * 0.15 +
+    headerSimilarity * 0.35 +
     segmentSimilarity * 0.35 +
-    frequencySimilarity * 0.10 +
-    hashSimilarity * 0.05
+    frequencySimilarity * 0.15
   );
   
-  console.log('Combined similarity score:', combinedScore);
-  console.log('=== FACE SIMILARITY CALCULATION COMPLETE ===');
-  
+  console.log('Voting combined similarity score:', combinedScore);
   return combinedScore;
 };
 
@@ -218,11 +291,11 @@ const isFaceAlreadyRegistered = (newFaceData: string, existingVoters: Voter[]): 
   for (const voter of existingVoters) {
     console.log(`Comparing with voter: ${voter.name} (ID: ${voter.voterId})`);
     
-    const similarity = calculateFaceSimilarity(newFaceData, voter.faceData);
+    const similarity = calculateRegistrationFaceSimilarity(newFaceData, voter.faceData);
     console.log(`Similarity with ${voter.name}: ${(similarity * 100).toFixed(2)}%`);
     
-    // Very strict threshold for duplicate detection (90% similarity)
-    const duplicateThreshold = 0.90;
+    // Very strict threshold for duplicate detection (88% similarity)
+    const duplicateThreshold = 0.88;
     
     if (similarity >= duplicateThreshold) {
       console.log(`🚨 DUPLICATE FACE DETECTED! 🚨`);
@@ -241,11 +314,11 @@ const isFaceAlreadyRegistered = (newFaceData: string, existingVoters: Voter[]): 
 const verifyFaceMatch = (registeredFace: string, currentFace: string): boolean => {
   console.log('=== FACE VERIFICATION FOR VOTING ===');
   
-  const similarity = calculateFaceSimilarity(registeredFace, currentFace);
+  const similarity = calculateVotingFaceSimilarity(registeredFace, currentFace);
   console.log('Verification similarity score:', (similarity * 100).toFixed(2) + '%');
   
-  // More lenient threshold for verification (75% similarity)
-  const threshold = 0.75;
+  // More lenient threshold for verification (60% similarity)
+  const threshold = 0.60;
   const isMatch = similarity >= threshold;
   
   console.log('Verification threshold:', (threshold * 100) + '%');
