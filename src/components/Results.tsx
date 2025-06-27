@@ -1,12 +1,18 @@
 
-import React from 'react';
-import { BarChart3, Trophy, Users, TrendingUp } from 'lucide-react';
+import React, { useState } from 'react';
+import { BarChart3, Trophy, Users, TrendingUp, Shield, LogOut } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 import { useVoting } from '../context/VotingContext';
 
 const Results = () => {
-  const { candidates, voters } = useVoting();
+  const { candidates, voters, isAdminAuthenticated, authenticateAdmin, logoutAdmin } = useVoting();
+  const { toast } = useToast();
+  const [loginData, setLoginData] = useState({ username: '', password: '' });
   
   const totalVotes = candidates.reduce((sum, candidate) => sum + candidate.voteCount, 0);
   const totalVoters = voters.length;
@@ -18,11 +24,85 @@ const Results = () => {
 
   const sortedCandidates = [...candidates].sort((a, b) => b.voteCount - a.voteCount);
 
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (authenticateAdmin(loginData.username, loginData.password)) {
+      toast({
+        title: "Access Granted",
+        description: "Welcome to the results dashboard.",
+      });
+    } else {
+      toast({
+        title: "Access Denied",
+        description: "Invalid username or password.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Show login form if admin is not authenticated
+  if (!isAdminAuthenticated) {
+    return (
+      <div className="max-w-md mx-auto">
+        <Card className="shadow-xl border-0">
+          <CardHeader className="bg-gradient-to-r from-green-600 to-blue-600 text-white">
+            <CardTitle className="flex items-center space-x-2 text-xl">
+              <Shield className="h-6 w-6" />
+              <span>Admin Access Required</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="text-center mb-6">
+              <p className="text-gray-600">
+                Election results are restricted to authorized administrators only. 
+                Please enter your admin credentials to view the results.
+              </p>
+            </div>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  type="text"
+                  value={loginData.username}
+                  onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
+                  placeholder="vamshi or sumer"
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={loginData.password}
+                  onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                  placeholder="admin123"
+                  className="mt-2"
+                />
+              </div>
+              <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">
+                Access Results
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show results if admin is authenticated
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div className="text-center mb-8">
-        <h2 className="text-4xl font-bold text-gray-800 mb-2">Election Results</h2>
-        <p className="text-lg text-gray-600">Live voting results and statistics</p>
+      <div className="flex justify-between items-center">
+        <div className="text-center">
+          <h2 className="text-4xl font-bold text-gray-800 mb-2">Election Results</h2>
+          <p className="text-lg text-gray-600">Live voting results and statistics</p>
+        </div>
+        <Button onClick={logoutAdmin} variant="outline" className="flex items-center space-x-2">
+          <LogOut className="h-4 w-4" />
+          <span>Logout</span>
+        </Button>
       </div>
 
       <div className="grid md:grid-cols-4 gap-6">
