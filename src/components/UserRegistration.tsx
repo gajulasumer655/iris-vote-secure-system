@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Camera, User, Eye, EyeOff, Scan } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -24,10 +23,39 @@ const UserRegistration = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+    
+    // Special handling for Voter ID to ensure format compliance
+    if (name === 'voterId') {
+      // Remove any non-alphanumeric characters and limit to 10 characters
+      let cleanedValue = value.replace(/[^A-Za-z0-9]/g, '').substring(0, 10);
+      
+      setFormData({
+        ...formData,
+        [name]: cleanedValue.toUpperCase(),
+      });
+    } else if (name === 'aadhaarNumber') {
+      // Only allow digits and limit to 12 characters
+      const cleanedValue = value.replace(/\D/g, '').substring(0, 12);
+      setFormData({
+        ...formData,
+        [name]: cleanedValue,
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
+  };
+
+  const validateVoterIdFormat = (voterId: string): boolean => {
+    if (voterId.length !== 10) return false;
+    
+    const firstChar = voterId.charAt(0);
+    const lastChar = voterId.charAt(9);
+    
+    return /^[A-Za-z]$/.test(firstChar) && /^[0-9]$/.test(lastChar);
   };
 
   const startFaceCamera = async () => {
@@ -135,10 +163,31 @@ const UserRegistration = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate all required fields
     if (!formData.name || !formData.aadhaarNumber || !formData.voterId || !formData.address) {
       toast({
         title: "Missing Fields",
         description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate Voter ID format
+    if (!validateVoterIdFormat(formData.voterId)) {
+      toast({
+        title: "Invalid Voter ID Format",
+        description: "Voter ID must be exactly 10 characters long, start with a letter, and end with a number (e.g., A12345678B).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate Aadhaar format
+    if (!/^\d{12}$/.test(formData.aadhaarNumber)) {
+      toast({
+        title: "Invalid Aadhaar Number",
+        description: "Aadhaar number must be exactly 12 digits.",
         variant: "destructive",
       });
       return;
@@ -233,6 +282,7 @@ const UserRegistration = () => {
                     maxLength={12}
                     className="mt-2 h-12"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Must be exactly 12 digits</p>
                 </div>
 
                 <div>
@@ -242,9 +292,16 @@ const UserRegistration = () => {
                     name="voterId"
                     value={formData.voterId}
                     onChange={handleInputChange}
-                    placeholder="Enter your Voter ID"
+                    placeholder="e.g., A12345678B"
+                    maxLength={10}
                     className="mt-2 h-12"
                   />
+                  <p className="text-xs text-gray-500 mt-1">10 characters: start with letter, end with number</p>
+                  {formData.voterId && !validateVoterIdFormat(formData.voterId) && (
+                    <p className="text-xs text-red-500 mt-1">
+                      Invalid format. Must be 10 characters, start with letter, end with number
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -274,6 +331,7 @@ const UserRegistration = () => {
                       <li>• Remove sunglasses or hats</li>
                       <li>• Keep a neutral expression</li>
                       <li>• Position face in the center of frame</li>
+                      <li>• <strong>Each face can only be registered once</strong></li>
                     </ul>
                   </div>
 
@@ -463,6 +521,7 @@ const UserRegistration = () => {
             <Button
               type="submit"
               className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-lg"
+              disabled={!validateVoterIdFormat(formData.voterId) || formData.aadhaarNumber.length !== 12}
             >
               Register Voter
             </Button>
