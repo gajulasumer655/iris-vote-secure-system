@@ -61,9 +61,9 @@ const validateVoterIdFormat = (voterId: string): boolean => {
   return isFirstCharLetter && isLastCharNumber;
 };
 
-// Face matching algorithm for duplicate detection during registration (strict)
+// Enhanced face matching algorithm for duplicate detection during registration (very strict)
 const calculateRegistrationFaceSimilarity = (face1: string, face2: string): number => {
-  console.log('=== REGISTRATION FACE SIMILARITY CHECK ===');
+  console.log('=== ENHANCED REGISTRATION FACE SIMILARITY CHECK ===');
   console.log('Face 1 length:', face1.length);
   console.log('Face 2 length:', face2.length);
   
@@ -92,17 +92,20 @@ const calculateRegistrationFaceSimilarity = (face1: string, face2: string): numb
   const data1 = getBase64(face1);
   const data2 = getBase64(face2);
   
-  // Strict length similarity check for registration
+  // Enhanced similarity calculation with multiple factors
+  
+  // 1. Length similarity (more strict)
   const lengthRatio = Math.min(data1.length, data2.length) / Math.max(data1.length, data2.length);
   console.log('Length ratio:', lengthRatio);
   
-  if (lengthRatio < 0.85) {
+  // Fail immediately if length difference is too large
+  if (lengthRatio < 0.75) {
     console.log('Length difference too large for registration - returning 0% similarity');
     return 0;
   }
   
-  // Enhanced header similarity (first 500 characters for better accuracy)
-  const headerLength = Math.min(500, Math.min(data1.length, data2.length));
+  // 2. Enhanced header analysis (first 1000 characters for better accuracy)
+  const headerLength = Math.min(1000, Math.min(data1.length, data2.length));
   let headerMatches = 0;
   
   for (let i = 0; i < headerLength; i++) {
@@ -114,42 +117,133 @@ const calculateRegistrationFaceSimilarity = (face1: string, face2: string): numb
   const headerSimilarity = headerMatches / headerLength;
   console.log('Header similarity:', headerSimilarity);
   
-  // Segment analysis
-  const numSegments = 15;
-  const segmentSize = Math.floor(Math.min(data1.length, data2.length) / numSegments);
-  let totalSegmentSimilarity = 0;
-  
-  for (let i = 0; i < numSegments; i++) {
-    const start = i * segmentSize;
-    const end = Math.min(start + segmentSize, Math.min(data1.length, data2.length));
+  // 3. Multiple segment analysis with different sizes
+  const calculateSegmentSimilarity = (numSegments: number) => {
+    const segmentSize = Math.floor(Math.min(data1.length, data2.length) / numSegments);
+    let totalSegmentSimilarity = 0;
     
-    const segment1 = data1.substring(start, end);
-    const segment2 = data2.substring(start, end);
+    for (let i = 0; i < numSegments; i++) {
+      const start = i * segmentSize;
+      const end = Math.min(start + segmentSize, Math.min(data1.length, data2.length));
+      
+      const segment1 = data1.substring(start, end);
+      const segment2 = data2.substring(start, end);
+      
+      let matches = 0;
+      const segmentLength = Math.min(segment1.length, segment2.length);
+      
+      for (let j = 0; j < segmentLength; j++) {
+        if (segment1[j] === segment2[j]) {
+          matches++;
+        }
+      }
+      
+      const segmentSim = segmentLength > 0 ? matches / segmentLength : 0;
+      totalSegmentSimilarity += segmentSim;
+    }
+    
+    return totalSegmentSimilarity / numSegments;
+  };
+  
+  const segment10Similarity = calculateSegmentSimilarity(10);
+  const segment20Similarity = calculateSegmentSimilarity(20);
+  const segment50Similarity = calculateSegmentSimilarity(50);
+  
+  console.log('Segment 10 similarity:', segment10Similarity);
+  console.log('Segment 20 similarity:', segment20Similarity);
+  console.log('Segment 50 similarity:', segment50Similarity);
+  
+  // 4. Character frequency analysis
+  const getCharFrequency = (str: string, sampleRate: number = 5) => {
+    const freq: { [key: string]: number } = {};
+    for (let i = 0; i < str.length; i += sampleRate) {
+      const char = str[i];
+      freq[char] = (freq[char] || 0) + 1;
+    }
+    return freq;
+  };
+  
+  const freq1 = getCharFrequency(data1);
+  const freq2 = getCharFrequency(data2);
+  
+  const allChars = new Set([...Object.keys(freq1), ...Object.keys(freq2)]);
+  let frequencyScore = 0;
+  
+  for (const char of allChars) {
+    const f1 = freq1[char] || 0;
+    const f2 = freq2[char] || 0;
+    const maxFreq = Math.max(f1, f2);
+    
+    if (maxFreq > 0) {
+      frequencyScore += Math.min(f1, f2) / maxFreq;
+    }
+  }
+  
+  const frequencySimilarity = allChars.size > 0 ? frequencyScore / allChars.size : 0;
+  console.log('Frequency similarity:', frequencySimilarity);
+  
+  // 5. Pattern matching at different positions
+  const calculatePatternSimilarity = () => {
+    const patternLength = 100;
+    const positions = [0, Math.floor(data1.length * 0.25), Math.floor(data1.length * 0.5), Math.floor(data1.length * 0.75)];
+    let totalPatternSimilarity = 0;
+    
+    for (const pos of positions) {
+      if (pos + patternLength <= Math.min(data1.length, data2.length)) {
+        const pattern1 = data1.substring(pos, pos + patternLength);
+        const pattern2 = data2.substring(pos, pos + patternLength);
+        
+        let matches = 0;
+        for (let i = 0; i < patternLength; i++) {
+          if (pattern1[i] === pattern2[i]) {
+            matches++;
+          }
+        }
+        
+        totalPatternSimilarity += matches / patternLength;
+      }
+    }
+    
+    return totalPatternSimilarity / positions.length;
+  };
+  
+  const patternSimilarity = calculatePatternSimilarity();
+  console.log('Pattern similarity:', patternSimilarity);
+  
+  // 6. Hash-based similarity for quick duplicate detection
+  const calculateHashSimilarity = () => {
+    const hashLength = 64;
+    const hash1 = data1.substring(0, Math.min(hashLength, data1.length));
+    const hash2 = data2.substring(0, Math.min(hashLength, data2.length));
     
     let matches = 0;
-    const segmentLength = Math.min(segment1.length, segment2.length);
+    const minLength = Math.min(hash1.length, hash2.length);
     
-    for (let j = 0; j < segmentLength; j++) {
-      if (segment1[j] === segment2[j]) {
+    for (let i = 0; i < minLength; i++) {
+      if (hash1[i] === hash2[i]) {
         matches++;
       }
     }
     
-    const segmentSim = segmentLength > 0 ? matches / segmentLength : 0;
-    totalSegmentSimilarity += segmentSim;
-  }
+    return minLength > 0 ? matches / minLength : 0;
+  };
   
-  const segmentSimilarity = totalSegmentSimilarity / numSegments;
-  console.log('Segment similarity:', segmentSimilarity);
+  const hashSimilarity = calculateHashSimilarity();
+  console.log('Hash similarity:', hashSimilarity);
   
-  // Combined similarity score
+  // Enhanced weighted combined similarity score with multiple factors
   const combinedScore = (
-    lengthRatio * 0.20 +
-    headerSimilarity * 0.50 +
-    segmentSimilarity * 0.30
+    lengthRatio * 0.10 +
+    headerSimilarity * 0.25 +
+    segment10Similarity * 0.15 +
+    segment20Similarity * 0.15 +
+    segment50Similarity * 0.10 +
+    frequencySimilarity * 0.10 +
+    patternSimilarity * 0.10 +
+    hashSimilarity * 0.05
   );
   
-  console.log('Registration combined similarity score:', combinedScore);
+  console.log('Enhanced registration combined similarity score:', combinedScore);
   return combinedScore;
 };
 
@@ -276,9 +370,9 @@ const calculateVotingFaceSimilarity = (registeredFace: string, currentFace: stri
   return combinedScore;
 };
 
-// Strict duplicate face detection with very high threshold
+// Enhanced strict duplicate face detection with lower threshold
 const isFaceAlreadyRegistered = (newFaceData: string, existingVoters: Voter[]): { isDuplicate: boolean; existingVoter?: Voter } => {
-  console.log('=== CHECKING FOR DUPLICATE FACE REGISTRATION ===');
+  console.log('=== ENHANCED DUPLICATE FACE DETECTION ===');
   console.log('New face data length:', newFaceData.length);
   console.log('Checking against', existingVoters.length, 'existing voters');
   
@@ -294,8 +388,9 @@ const isFaceAlreadyRegistered = (newFaceData: string, existingVoters: Voter[]): 
     const similarity = calculateRegistrationFaceSimilarity(newFaceData, voter.faceData);
     console.log(`Similarity with ${voter.name}: ${(similarity * 100).toFixed(2)}%`);
     
-    // Very strict threshold for duplicate detection (88% similarity)
-    const duplicateThreshold = 0.88;
+    // MUCH MORE STRICT threshold for duplicate detection (65% similarity)
+    // This will catch more potential duplicates while still allowing legitimate registrations
+    const duplicateThreshold = 0.65;
     
     if (similarity >= duplicateThreshold) {
       console.log(`🚨 DUPLICATE FACE DETECTED! 🚨`);
@@ -398,8 +493,8 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       };
     }
     
-    // CRITICAL: Check for duplicate face - this is the main prevention mechanism
-    console.log('🔍 Starting duplicate face detection...');
+    // CRITICAL: Enhanced check for duplicate face - this is the main prevention mechanism
+    console.log('🔍 Starting enhanced duplicate face detection...');
     const faceCheck = isFaceAlreadyRegistered(voterData.faceData, voters);
     
     if (faceCheck.isDuplicate && faceCheck.existingVoter) {
@@ -410,7 +505,7 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       
       return {
         success: false,
-        message: `🚫 REGISTRATION DENIED: This face is already registered under the name "${faceCheck.existingVoter.name}" (Voter ID: ${faceCheck.existingVoter.voterId}). Each person can only register ONCE. If you believe this is an error, please contact the election office immediately.`
+        message: `🚫 REGISTRATION DENIED: This face pattern is already registered under the name "${faceCheck.existingVoter.name}" (Voter ID: ${faceCheck.existingVoter.voterId}). Each person can only register ONCE with their unique facial pattern. If you believe this is an error, please contact the election office immediately.`
       };
     }
     
@@ -431,7 +526,7 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     
     return {
       success: true,
-      message: "✅ Voter registered successfully! Your biometric data has been securely recorded and verified as unique. You can now vote in the election."
+      message: "✅ Voter registered successfully! Your unique facial pattern has been securely recorded and verified. You can now vote in the election."
     };
   };
 
