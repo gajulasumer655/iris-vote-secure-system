@@ -15,6 +15,8 @@ const UserRegistration = () => {
     aadhaarNumber: '',
     voterId: '',
     address: '',
+    phoneNumber: '',
+    email: '',
   });
   const [faceCapture, setFaceCapture] = useState<string | null>(null);
   const [irisCapture, setIrisCapture] = useState<string | null>(null);
@@ -37,6 +39,13 @@ const UserRegistration = () => {
     } else if (name === 'aadhaarNumber') {
       // Only allow digits and limit to 12 characters
       const cleanedValue = value.replace(/\D/g, '').substring(0, 12);
+      setFormData({
+        ...formData,
+        [name]: cleanedValue,
+      });
+    } else if (name === 'phoneNumber') {
+      // Only allow digits and limit to 10 characters
+      const cleanedValue = value.replace(/\D/g, '').substring(0, 10);
       setFormData({
         ...formData,
         [name]: cleanedValue,
@@ -193,6 +202,26 @@ const UserRegistration = () => {
       return;
     }
 
+    // Validate phone number if provided
+    if (formData.phoneNumber && !/^\d{10}$/.test(formData.phoneNumber)) {
+      toast({
+        title: "Invalid Phone Number",
+        description: "Phone number must be exactly 10 digits if provided.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate email if provided
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address if provided.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!faceCapture) {
       toast({
         title: "Face Capture Required",
@@ -225,7 +254,7 @@ const UserRegistration = () => {
         });
 
         // Reset form
-        setFormData({ name: '', aadhaarNumber: '', voterId: '', address: '' });
+        setFormData({ name: '', aadhaarNumber: '', voterId: '', address: '', phoneNumber: '', email: '' });
         setFaceCapture(null);
         setIrisCapture(null);
       } else {
@@ -260,7 +289,7 @@ const UserRegistration = () => {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Personal Information</h3>
                 <div>
-                  <Label htmlFor="name" className="text-sm font-medium">Full Name</Label>
+                  <Label htmlFor="name" className="text-sm font-medium">Full Name <span className="text-red-500">*</span></Label>
                   <Input
                     id="name"
                     name="name"
@@ -268,11 +297,12 @@ const UserRegistration = () => {
                     onChange={handleInputChange}
                     placeholder="Enter your full name"
                     className="mt-2 h-12"
+                    required
                   />
                 </div>
                 
                 <div>
-                  <Label htmlFor="aadhaarNumber" className="text-sm font-medium">Aadhaar Number</Label>
+                  <Label htmlFor="aadhaarNumber" className="text-sm font-medium">Aadhaar Number <span className="text-red-500">*</span></Label>
                   <Input
                     id="aadhaarNumber"
                     name="aadhaarNumber"
@@ -281,12 +311,13 @@ const UserRegistration = () => {
                     placeholder="Enter 12-digit Aadhaar number"
                     maxLength={12}
                     className="mt-2 h-12"
+                    required
                   />
                   <p className="text-xs text-gray-500 mt-1">Must be exactly 12 digits</p>
                 </div>
 
                 <div>
-                  <Label htmlFor="voterId" className="text-sm font-medium">Voter ID</Label>
+                  <Label htmlFor="voterId" className="text-sm font-medium">Voter ID <span className="text-red-500">*</span></Label>
                   <Input
                     id="voterId"
                     name="voterId"
@@ -295,6 +326,7 @@ const UserRegistration = () => {
                     placeholder="e.g., A12345678B"
                     maxLength={10}
                     className="mt-2 h-12"
+                    required
                   />
                   <p className="text-xs text-gray-500 mt-1">10 characters: start with letter, end with number</p>
                   {formData.voterId && !validateVoterIdFormat(formData.voterId) && (
@@ -305,7 +337,7 @@ const UserRegistration = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="address" className="text-sm font-medium">Address</Label>
+                  <Label htmlFor="address" className="text-sm font-medium">Address <span className="text-red-500">*</span></Label>
                   <Input
                     id="address"
                     name="address"
@@ -313,7 +345,36 @@ const UserRegistration = () => {
                     onChange={handleInputChange}
                     placeholder="Enter your complete address"
                     className="mt-2 h-12"
+                    required
                   />
+                </div>
+
+                <div>
+                  <Label htmlFor="phoneNumber" className="text-sm font-medium">Phone Number <span className="text-gray-500">(Optional)</span></Label>
+                  <Input
+                    id="phoneNumber"
+                    name="phoneNumber"
+                    value={formData.phoneNumber}
+                    onChange={handleInputChange}
+                    placeholder="Enter 10-digit phone number"
+                    maxLength={10}
+                    className="mt-2 h-12"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Must be exactly 10 digits if provided</p>
+                </div>
+
+                <div>
+                  <Label htmlFor="email" className="text-sm font-medium">Email Address <span className="text-gray-500">(Optional)</span></Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    placeholder="Enter your email address"
+                    className="mt-2 h-12"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Valid email format if provided</p>
                 </div>
               </div>
 

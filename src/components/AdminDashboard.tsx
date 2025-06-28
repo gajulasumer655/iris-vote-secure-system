@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Shield, Users, UserPlus, LogOut, CheckCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -70,7 +69,7 @@ const AdminDashboard = () => {
                   type="text"
                   value={loginData.username}
                   onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
-                  placeholder="vamshi or sumer"
+                  placeholder="Enter username"
                   className="mt-2"
                 />
               </div>
@@ -81,7 +80,7 @@ const AdminDashboard = () => {
                   type="password"
                   value={loginData.password}
                   onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                  placeholder="admin123"
+                  placeholder="Enter password"
                   className="mt-2"
                 />
               </div>

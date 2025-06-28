@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { BarChart3, Trophy, Users, TrendingUp, Shield, LogOut } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -66,7 +65,7 @@ const Results = () => {
                   type="text"
                   value={loginData.username}
                   onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
-                  placeholder="vamshi or sumer"
+                  placeholder="Enter username"
                   className="mt-2"
                 />
               </div>
@@ -77,7 +76,7 @@ const Results = () => {
                   type="password"
                   value={loginData.password}
                   onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                  placeholder="admin123"
+                  placeholder="Enter password"
                   className="mt-2"
                 />
               </div>
