@@ -1,20 +1,12 @@
+
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, User, Eye, EyeOff, Scan, Upload, CheckCircle } from 'lucide-react';
+import { Camera, User, Eye, EyeOff, Scan, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useVoting } from '../context/VotingContext';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 
 const UserRegistration = () => {
   const { registerVoter } = useVoting();
@@ -31,7 +23,6 @@ const UserRegistration = () => {
   const [irisCapture, setIrisCapture] = useState<string | null>(null);
   const [isCapturingFace, setIsCapturingFace] = useState(false);
   const [isCapturingIris, setIsCapturingIris] = useState(false);
-  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -354,8 +345,10 @@ const UserRegistration = () => {
       });
 
       if (result.success) {
-        // Show success dialog instead of just toast
-        setShowSuccessDialog(true);
+        toast({
+          title: "Registration Successful",
+          description: result.message,
+        });
 
         // Clear all data after successful registration
         clearAllData();
@@ -376,387 +369,358 @@ const UserRegistration = () => {
   };
 
   return (
-    <>
-      <div className="max-w-6xl mx-auto">
-        <Card className="shadow-xl border-0 bg-white">
-          <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
-            <CardTitle className="flex items-center justify-between text-2xl">
-              <div className="flex items-center space-x-2">
-                <User className="h-6 w-6" />
-                <span>Voter Registration</span>
+    <div className="max-w-6xl mx-auto">
+      <Card className="shadow-xl border-0 bg-white">
+        <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+          <CardTitle className="flex items-center justify-between text-2xl">
+            <div className="flex items-center space-x-2">
+              <User className="h-6 w-6" />
+              <span>Voter Registration</span>
+            </div>
+            <Button
+              type="button"
+              onClick={clearAllData}
+              variant="outline"
+              className="text-white border-white hover:bg-white hover:text-blue-600"
+            >
+              Clear All Data
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid lg:grid-cols-3 gap-6">
+              {/* Personal Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Personal Information</h3>
+                <div>
+                  <Label htmlFor="name" className="text-sm font-medium">Full Name <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    placeholder="Enter your full name"
+                    className="mt-2 h-12"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="aadhaarNumber" className="text-sm font-medium">Aadhaar Number <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="aadhaarNumber"
+                    name="aadhaarNumber"
+                    value={formData.aadhaarNumber}
+                    onChange={handleInputChange}
+                    placeholder="Enter 12-digit Aadhaar number"
+                    maxLength={12}
+                    className="mt-2 h-12"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Must be exactly 12 digits</p>
+                </div>
+
+                <div>
+                  <Label htmlFor="voterId" className="text-sm font-medium">Voter ID <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="voterId"
+                    name="voterId"
+                    value={formData.voterId}
+                    onChange={handleInputChange}
+                    placeholder="e.g., A12345678B"
+                    maxLength={10}
+                    className="mt-2 h-12"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">10 characters: start with letter, end with number</p>
+                  {formData.voterId && !validateVoterIdFormat(formData.voterId) && (
+                    <p className="text-xs text-red-500 mt-1">
+                      Invalid format. Must be 10 characters, start with letter, end with number
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="address" className="text-sm font-medium">Address <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="address"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    placeholder="Enter your complete address"
+                    className="mt-2 h-12"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="phoneNumber" className="text-sm font-medium">Phone Number <span className="text-gray-500">(Optional)</span></Label>
+                  <Input
+                    id="phoneNumber"
+                    name="phoneNumber"
+                    value={formData.phoneNumber}
+                    onChange={handleInputChange}
+                    placeholder="Enter 10-digit phone number"
+                    maxLength={10}
+                    className="mt-2 h-12"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Must be exactly 10 digits if provided</p>
+                </div>
+
+                <div>
+                  <Label htmlFor="email" className="text-sm font-medium">Email Address <span className="text-gray-500">(Optional)</span></Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    placeholder="Enter your email address"
+                    className="mt-2 h-12"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Valid email format if provided</p>
+                </div>
               </div>
-              <Button
-                type="button"
-                onClick={clearAllData}
-                variant="outline"
-                className="text-white border-white hover:bg-white hover:text-blue-600"
-              >
-                Clear All Data
-              </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-8">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid lg:grid-cols-3 gap-6">
-                {/* Personal Information */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Personal Information</h3>
-                  <div>
-                    <Label htmlFor="name" className="text-sm font-medium">Full Name <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      placeholder="Enter your full name"
-                      className="mt-2 h-12"
-                      required
-                    />
-                  </div>
+
+              {/* Face Capture */}
+              <div className="space-y-4">
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-center mb-4">Face Capture</h3>
                   
-                  <div>
-                    <Label htmlFor="aadhaarNumber" className="text-sm font-medium">Aadhaar Number <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="aadhaarNumber"
-                      name="aadhaarNumber"
-                      value={formData.aadhaarNumber}
-                      onChange={handleInputChange}
-                      placeholder="Enter 12-digit Aadhaar number"
-                      maxLength={12}
-                      className="mt-2 h-12"
-                      required
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Must be exactly 12 digits</p>
+                  {/* Face Capture Guidelines */}
+                  <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                    <h4 className="font-medium text-blue-800 mb-2">Face Guidelines:</h4>
+                    <ul className="text-sm text-blue-700 space-y-1">
+                      <li>• Look directly at the camera</li>
+                      <li>• Ensure good lighting on your face</li>
+                      <li>• Remove sunglasses or hats</li>
+                      <li>• Keep a neutral expression</li>
+                      <li>• Position face in the center of frame</li>
+                      <li>• <strong>Each face can only be registered once</strong></li>
+                    </ul>
                   </div>
 
-                  <div>
-                    <Label htmlFor="voterId" className="text-sm font-medium">Voter ID <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="voterId"
-                      name="voterId"
-                      value={formData.voterId}
-                      onChange={handleInputChange}
-                      placeholder="e.g., A12345678B"
-                      maxLength={10}
-                      className="mt-2 h-12"
-                      required
-                    />
-                    <p className="text-xs text-gray-500 mt-1">10 characters: start with letter, end with number</p>
-                    {formData.voterId && !validateVoterIdFormat(formData.voterId) && (
-                      <p className="text-xs text-red-500 mt-1">
-                        Invalid format. Must be 10 characters, start with letter, end with number
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="address" className="text-sm font-medium">Address <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="address"
-                      name="address"
-                      value={formData.address}
-                      onChange={handleInputChange}
-                      placeholder="Enter your complete address"
-                      className="mt-2 h-12"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="phoneNumber" className="text-sm font-medium">Phone Number <span className="text-gray-500">(Optional)</span></Label>
-                    <Input
-                      id="phoneNumber"
-                      name="phoneNumber"
-                      value={formData.phoneNumber}
-                      onChange={handleInputChange}
-                      placeholder="Enter 10-digit phone number"
-                      maxLength={10}
-                      className="mt-2 h-12"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Must be exactly 10 digits if provided</p>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="email" className="text-sm font-medium">Email Address <span className="text-gray-500">(Optional)</span></Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      placeholder="Enter your email address"
-                      className="mt-2 h-12"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Valid email format if provided</p>
-                  </div>
-                </div>
-
-                {/* Face Capture */}
-                <div className="space-y-4">
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-center mb-4">Face Capture</h3>
-                    
-                    {/* Face Capture Guidelines */}
-                    <div className="bg-blue-50 p-4 rounded-lg mb-4">
-                      <h4 className="font-medium text-blue-800 mb-2">Face Guidelines:</h4>
-                      <ul className="text-sm text-blue-700 space-y-1">
-                        <li>• Look directly at the camera</li>
-                        <li>• Ensure good lighting on your face</li>
-                        <li>• Remove sunglasses or hats</li>
-                        <li>• Keep a neutral expression</li>
-                        <li>• Position face in the center of frame</li>
-                        <li>• <strong>Each face can only be registered once</strong></li>
-                      </ul>
-                    </div>
-
-                    {isCapturingFace ? (
-                      <div className="space-y-4 text-center">
-                        <div className="relative inline-block">
-                          <video
-                            ref={videoRef}
-                            autoPlay
-                            className="w-full max-w-sm mx-auto rounded-lg border-4 border-blue-200"
-                          />
-                          <div className="absolute inset-0 border-2 border-green-400 rounded-lg pointer-events-none">
-                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                              <div className="w-48 h-64 border-2 border-green-400 rounded-full opacity-50"></div>
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-sm text-gray-600">Position your face within the oval guide</p>
-                        <Button
-                          type="button"
-                          onClick={captureFaceImage}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <Camera className="h-4 w-4 mr-2" />
-                          Capture Face
-                        </Button>
-                      </div>
-                    ) : faceCapture ? (
-                      <div className="space-y-4 text-center">
-                        <div className="relative inline-block">
-                          <img
-                            src={faceCapture}
-                            alt="Captured face"
-                            className="w-full max-w-sm mx-auto rounded-lg border-4 border-green-200"
-                          />
-                        </div>
-                        <div className="flex items-center justify-center space-x-2">
-                          <div className="flex items-center text-green-600">
-                            <Eye className="h-4 w-4 mr-1" />
-                            <span className="text-sm font-medium">Face Captured</span>
-                          </div>
-                        </div>
-                        <Button
-                          type="button"
-                          onClick={retakeFacePhoto}
-                          variant="outline"
-                          className="border-blue-300 text-blue-600 hover:bg-blue-50"
-                        >
-                          <Camera className="h-4 w-4 mr-2" />
-                          Retake Photo
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="text-center space-y-3">
-                        <Button
-                          type="button"
-                          onClick={startFaceCamera}
-                          className="bg-blue-600 hover:bg-blue-700 w-full"
-                        >
-                          <Camera className="h-4 w-4 mr-2" />
-                          Start Face Capture
-                        </Button>
-                        
-                        <div className="flex items-center space-x-2">
-                          <hr className="flex-1 border-gray-300" />
-                          <span className="text-sm text-gray-500">or</span>
-                          <hr className="flex-1 border-gray-300" />
-                        </div>
-                        
-                        <input
-                          type="file"
-                          ref={fileInputRef}
-                          accept="image/*"
-                          onChange={handleImageImport}
-                          className="hidden"
+                  {isCapturingFace ? (
+                    <div className="space-y-4 text-center">
+                      <div className="relative inline-block">
+                        <video
+                          ref={videoRef}
+                          autoPlay
+                          className="w-full max-w-sm mx-auto rounded-lg border-4 border-blue-200"
                         />
-                        <Button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          variant="outline"
-                          className="border-gray-300 text-gray-600 hover:bg-gray-50 w-full"
-                        >
-                          <Upload className="h-4 w-4 mr-2" />
-                          Import Face Image
-                        </Button>
-                        <p className="text-xs text-gray-500">
-                          Optional: Import an existing face image (max 5MB)
-                        </p>
+                        <div className="absolute inset-0 border-2 border-green-400 rounded-lg pointer-events-none">
+                          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                            <div className="w-48 h-64 border-2 border-green-400 rounded-full opacity-50"></div>
+                          </div>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Iris Capture */}
-                <div className="space-y-4">
-                  <div className="border-2 border-dashed border-purple-300 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-center mb-4">Iris Scan</h3>
-                    
-                    {/* Iris Capture Guidelines */}
-                    <div className="bg-purple-50 p-4 rounded-lg mb-4">
-                      <h4 className="font-medium text-purple-800 mb-2">Iris Guidelines:</h4>
-                      <ul className="text-sm text-purple-700 space-y-1">
-                        <li>• Move camera close to your eye</li>
-                        <li>• Keep your eye wide open</li>
-                        <li>• Hold steady for 3 seconds</li>
-                        <li>• Ensure good lighting</li>
-                        <li>• Remove contact lenses if possible</li>
-                      </ul>
+                      <p className="text-sm text-gray-600">Position your face within the oval guide</p>
+                      <Button
+                        type="button"
+                        onClick={captureFaceImage}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <Camera className="h-4 w-4 mr-2" />
+                        Capture Face
+                      </Button>
                     </div>
-
-                    {isCapturingIris ? (
-                      <div className="space-y-4 text-center">
-                        <div className="relative inline-block">
-                          <video
-                            ref={videoRef}
-                            autoPlay
-                            className="w-full max-w-sm mx-auto rounded-lg border-4 border-purple-200"
-                          />
-                          <div className="absolute inset-0 border-2 border-green-400 rounded-lg pointer-events-none">
-                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                              <div className="w-32 h-32 border-2 border-green-400 rounded-full opacity-50"></div>
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-sm text-gray-600">Position your eye within the circular guide</p>
-                        <Button
-                          type="button"
-                          onClick={captureIrisImage}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <Scan className="h-4 w-4 mr-2" />
-                          Capture Iris
-                        </Button>
+                  ) : faceCapture ? (
+                    <div className="space-y-4 text-center">
+                      <div className="relative inline-block">
+                        <img
+                          src={faceCapture}
+                          alt="Captured face"
+                          className="w-full max-w-sm mx-auto rounded-lg border-4 border-green-200"
+                        />
                       </div>
-                    ) : irisCapture ? (
-                      <div className="space-y-4 text-center">
-                        <div className="relative inline-block">
-                          <img
-                            src={irisCapture}
-                            alt="Captured iris"
-                            className="w-full max-w-sm mx-auto rounded-lg border-4 border-green-200"
-                          />
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="flex items-center text-green-600">
+                          <Eye className="h-4 w-4 mr-1" />
+                          <span className="text-sm font-medium">Face Captured</span>
                         </div>
-                        <div className="flex items-center justify-center space-x-2">
-                          <div className="flex items-center text-green-600">
-                            <Scan className="h-4 w-4 mr-1" />
-                            <span className="text-sm font-medium">Iris Captured</span>
-                          </div>
-                        </div>
-                        <Button
-                          type="button"
-                          onClick={retakeIrisPhoto}
-                          variant="outline"
-                          className="border-purple-300 text-purple-600 hover:bg-purple-50"
-                        >
-                          <Scan className="h-4 w-4 mr-2" />
-                          Retake Iris
-                        </Button>
                       </div>
-                    ) : (
-                      <div className="text-center">
-                        <Button
-                          type="button"
-                          onClick={startIrisCamera}
-                          className="bg-purple-600 hover:bg-purple-700"
-                        >
-                          <Scan className="h-4 w-4 mr-2" />
-                          Start Iris Scan
-                        </Button>
+                      <Button
+                        type="button"
+                        onClick={retakeFacePhoto}
+                        variant="outline"
+                        className="border-blue-300 text-blue-600 hover:bg-blue-50"
+                      >
+                        <Camera className="h-4 w-4 mr-2" />
+                        Retake Photo
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="text-center space-y-3">
+                      <Button
+                        type="button"
+                        onClick={startFaceCamera}
+                        className="bg-blue-600 hover:bg-blue-700 w-full"
+                      >
+                        <Camera className="h-4 w-4 mr-2" />
+                        Start Face Capture
+                      </Button>
+                      
+                      <div className="flex items-center space-x-2">
+                        <hr className="flex-1 border-gray-300" />
+                        <span className="text-sm text-gray-500">or</span>
+                        <hr className="flex-1 border-gray-300" />
                       </div>
-                    )}
-                  </div>
+                      
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        accept="image/*"
+                        onChange={handleImageImport}
+                        className="hidden"
+                      />
+                      <Button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        variant="outline"
+                        className="border-gray-300 text-gray-600 hover:bg-gray-50 w-full"
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Import Face Image
+                      </Button>
+                      <p className="text-xs text-gray-500">
+                        Optional: Import an existing face image (max 5MB)
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Registration Status */}
-              <div className="grid md:grid-cols-2 gap-4 mt-8">
-                <div className="border-2 border-gray-200 rounded-lg p-4">
-                  <Label className="text-sm font-medium block mb-2">Face Status</Label>
-                  <div className="flex items-center justify-center space-x-2">
-                    {faceCapture ? (
-                      <>
-                        <Eye className="h-5 w-5 text-green-600" />
-                        <span className="text-green-600 font-medium">Face Verified ✓</span>
-                      </>
-                    ) : (
-                      <>
-                        <EyeOff className="h-5 w-5 text-gray-400" />
-                        <span className="text-gray-400">Face Not Captured</span>
-                      </>
-                    )}
+              {/* Iris Capture */}
+              <div className="space-y-4">
+                <div className="border-2 border-dashed border-purple-300 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-center mb-4">Iris Scan</h3>
+                  
+                  {/* Iris Capture Guidelines */}
+                  <div className="bg-purple-50 p-4 rounded-lg mb-4">
+                    <h4 className="font-medium text-purple-800 mb-2">Iris Guidelines:</h4>
+                    <ul className="text-sm text-purple-700 space-y-1">
+                      <li>• Move camera close to your eye</li>
+                      <li>• Keep your eye wide open</li>
+                      <li>• Hold steady for 3 seconds</li>
+                      <li>• Ensure good lighting</li>
+                      <li>• Remove contact lenses if possible</li>
+                    </ul>
                   </div>
+
+                  {isCapturingIris ? (
+                    <div className="space-y-4 text-center">
+                      <div className="relative inline-block">
+                        <video
+                          ref={videoRef}
+                          autoPlay
+                          className="w-full max-w-sm mx-auto rounded-lg border-4 border-purple-200"
+                        />
+                        <div className="absolute inset-0 border-2 border-green-400 rounded-lg pointer-events-none">
+                          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                            <div className="w-32 h-32 border-2 border-green-400 rounded-full opacity-50"></div>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-600">Position your eye within the circular guide</p>
+                      <Button
+                        type="button"
+                        onClick={captureIrisImage}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <Scan className="h-4 w-4 mr-2" />
+                        Capture Iris
+                      </Button>
+                    </div>
+                  ) : irisCapture ? (
+                    <div className="space-y-4 text-center">
+                      <div className="relative inline-block">
+                        <img
+                          src={irisCapture}
+                          alt="Captured iris"
+                          className="w-full max-w-sm mx-auto rounded-lg border-4 border-green-200"
+                        />
+                      </div>
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="flex items-center text-green-600">
+                          <Scan className="h-4 w-4 mr-1" />
+                          <span className="text-sm font-medium">Iris Captured</span>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={retakeIrisPhoto}
+                        variant="outline"
+                        className="border-purple-300 text-purple-600 hover:bg-purple-50"
+                      >
+                        <Scan className="h-4 w-4 mr-2" />
+                        Retake Iris
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <Button
+                        type="button"
+                        onClick={startIrisCamera}
+                        className="bg-purple-600 hover:bg-purple-700"
+                      >
+                        <Scan className="h-4 w-4 mr-2" />
+                        Start Iris Scan
+                      </Button>
+                    </div>
+                  )}
                 </div>
-
-                <div className="border-2 border-gray-200 rounded-lg p-4">
-                  <Label className="text-sm font-medium block mb-2">Iris Status</Label>
-                  <div className="flex items-center justify-center space-x-2">
-                    {irisCapture ? (
-                      <>
-                        <Scan className="h-5 w-5 text-green-600" />
-                        <span className="text-green-600 font-medium">Iris Verified ✓</span>
-                      </>
-                    ) : (
-                      <>
-                        <EyeOff className="h-5 w-5 text-gray-400" />
-                        <span className="text-gray-400">Iris Not Captured</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-lg"
-                disabled={!validateVoterIdFormat(formData.voterId) || formData.aadhaarNumber.length !== 12}
-              >
-                Register Voter
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Success Dialog */}
-      <AlertDialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <AlertDialogContent className="max-w-md">
-          <AlertDialogHeader>
-            <div className="flex items-center justify-center mb-4">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="h-8 w-8 text-green-600" />
               </div>
             </div>
-            <AlertDialogTitle className="text-center text-xl font-semibold text-green-800">
-              Registration Successful!
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-center text-gray-600">
-              Your voter registration has been completed successfully. You can now participate in the voting process.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex justify-center">
-            <AlertDialogAction
-              onClick={() => setShowSuccessDialog(false)}
-              className="bg-green-600 hover:bg-green-700 px-8"
+
+            {/* Registration Status */}
+            <div className="grid md:grid-cols-2 gap-4 mt-8">
+              <div className="border-2 border-gray-200 rounded-lg p-4">
+                <Label className="text-sm font-medium block mb-2">Face Status</Label>
+                <div className="flex items-center justify-center space-x-2">
+                  {faceCapture ? (
+                    <>
+                      <Eye className="h-5 w-5 text-green-600" />
+                      <span className="text-green-600 font-medium">Face Verified ✓</span>
+                    </>
+                  ) : (
+                    <>
+                      <EyeOff className="h-5 w-5 text-gray-400" />
+                      <span className="text-gray-400">Face Not Captured</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-2 border-gray-200 rounded-lg p-4">
+                <Label className="text-sm font-medium block mb-2">Iris Status</Label>
+                <div className="flex items-center justify-center space-x-2">
+                  {irisCapture ? (
+                    <>
+                      <Scan className="h-5 w-5 text-green-600" />
+                      <span className="text-green-600 font-medium">Iris Verified ✓</span>
+                    </>
+                  ) : (
+                    <>
+                      <EyeOff className="h-5 w-5 text-gray-400" />
+                      <span className="text-gray-400">Iris Not Captured</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-lg"
+              disabled={!validateVoterIdFormat(formData.voterId) || formData.aadhaarNumber.length !== 12}
             >
-              Continue
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+              Register Voter
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
