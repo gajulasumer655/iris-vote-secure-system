@@ -1,6 +1,5 @@
-
-import React, { useState, useRef, useEffect } from 'react';
-import { Camera, User, Eye, EyeOff, Scan, Upload } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Camera, User, Eye, EyeOff, Scan } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,50 +23,6 @@ const UserRegistration = () => {
   const [isCapturingFace, setIsCapturingFace] = useState(false);
   const [isCapturingIris, setIsCapturingIris] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Load saved data on component mount
-  useEffect(() => {
-    const savedFormData = localStorage.getItem('voterRegistrationForm');
-    const savedFaceCapture = localStorage.getItem('voterFaceCapture');
-    const savedIrisCapture = localStorage.getItem('voterIrisCapture');
-
-    if (savedFormData) {
-      try {
-        const parsedData = JSON.parse(savedFormData);
-        setFormData(parsedData);
-      } catch (error) {
-        console.log('Error loading saved form data:', error);
-      }
-    }
-
-    if (savedFaceCapture) {
-      setFaceCapture(savedFaceCapture);
-    }
-
-    if (savedIrisCapture) {
-      setIrisCapture(savedIrisCapture);
-    }
-  }, []);
-
-  // Save form data to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem('voterRegistrationForm', JSON.stringify(formData));
-  }, [formData]);
-
-  // Save face capture to localStorage whenever it changes
-  useEffect(() => {
-    if (faceCapture) {
-      localStorage.setItem('voterFaceCapture', faceCapture);
-    }
-  }, [faceCapture]);
-
-  // Save iris capture to localStorage whenever it changes
-  useEffect(() => {
-    if (irisCapture) {
-      localStorage.setItem('voterIrisCapture', irisCapture);
-    }
-  }, [irisCapture]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -110,42 +65,6 @@ const UserRegistration = () => {
     const lastChar = voterId.charAt(9);
     
     return /^[A-Za-z]$/.test(firstChar) && /^[0-9]$/.test(lastChar);
-  };
-
-  const handleImageImport = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        toast({
-          title: "Invalid File Type",
-          description: "Please select an image file.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: "File Too Large",
-          description: "Please select an image smaller than 5MB.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const imageData = e.target?.result as string;
-        setFaceCapture(imageData);
-        toast({
-          title: "Image Imported Successfully",
-          description: "Face image has been imported successfully.",
-        });
-      };
-      reader.readAsDataURL(file);
-    }
   };
 
   const startFaceCamera = async () => {
@@ -242,28 +161,12 @@ const UserRegistration = () => {
 
   const retakeFacePhoto = () => {
     setFaceCapture(null);
-    localStorage.removeItem('voterFaceCapture');
     startFaceCamera();
   };
 
   const retakeIrisPhoto = () => {
     setIrisCapture(null);
-    localStorage.removeItem('voterIrisCapture');
     startIrisCamera();
-  };
-
-  const clearAllData = () => {
-    setFormData({ name: '', aadhaarNumber: '', voterId: '', address: '', phoneNumber: '', email: '' });
-    setFaceCapture(null);
-    setIrisCapture(null);
-    localStorage.removeItem('voterRegistrationForm');
-    localStorage.removeItem('voterFaceCapture');
-    localStorage.removeItem('voterIrisCapture');
-    
-    toast({
-      title: "Data Cleared",
-      description: "All registration data has been cleared.",
-    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -350,8 +253,10 @@ const UserRegistration = () => {
           description: result.message,
         });
 
-        // Clear all data after successful registration
-        clearAllData();
+        // Reset form
+        setFormData({ name: '', aadhaarNumber: '', voterId: '', address: '', phoneNumber: '', email: '' });
+        setFaceCapture(null);
+        setIrisCapture(null);
       } else {
         toast({
           title: "Registration Failed",
@@ -372,19 +277,9 @@ const UserRegistration = () => {
     <div className="max-w-6xl mx-auto">
       <Card className="shadow-xl border-0 bg-white">
         <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
-          <CardTitle className="flex items-center justify-between text-2xl">
-            <div className="flex items-center space-x-2">
-              <User className="h-6 w-6" />
-              <span>Voter Registration</span>
-            </div>
-            <Button
-              type="button"
-              onClick={clearAllData}
-              variant="outline"
-              className="text-white border-white hover:bg-white hover:text-blue-600"
-            >
-              Clear All Data
-            </Button>
+          <CardTitle className="flex items-center space-x-2 text-2xl">
+            <User className="h-6 w-6" />
+            <span>Voter Registration</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-8">
@@ -551,41 +446,15 @@ const UserRegistration = () => {
                       </Button>
                     </div>
                   ) : (
-                    <div className="text-center space-y-3">
+                    <div className="text-center">
                       <Button
                         type="button"
                         onClick={startFaceCamera}
-                        className="bg-blue-600 hover:bg-blue-700 w-full"
+                        className="bg-blue-600 hover:bg-blue-700"
                       >
                         <Camera className="h-4 w-4 mr-2" />
                         Start Face Capture
                       </Button>
-                      
-                      <div className="flex items-center space-x-2">
-                        <hr className="flex-1 border-gray-300" />
-                        <span className="text-sm text-gray-500">or</span>
-                        <hr className="flex-1 border-gray-300" />
-                      </div>
-                      
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        accept="image/*"
-                        onChange={handleImageImport}
-                        className="hidden"
-                      />
-                      <Button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        variant="outline"
-                        className="border-gray-300 text-gray-600 hover:bg-gray-50 w-full"
-                      >
-                        <Upload className="h-4 w-4 mr-2" />
-                        Import Face Image
-                      </Button>
-                      <p className="text-xs text-gray-500">
-                        Optional: Import an existing face image (max 5MB)
-                      </p>
                     </div>
                   )}
                 </div>
