@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { Shield, Users, UserPlus, LogOut, CheckCircle, Clock, Edit2, Save, X } from 'lucide-react';
+import { Shield, Users, UserPlus, LogOut, CheckCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,12 +10,10 @@ import { useVoting } from '../context/VotingContext';
 import VoterManagement from './VoterManagement';
 
 const AdminDashboard = () => {
-  const { isAdminAuthenticated, authenticateAdmin, logoutAdmin, candidates, addCandidate, voters, updateCandidate } = useVoting();
+  const { isAdminAuthenticated, authenticateAdmin, logoutAdmin, candidates, addCandidate, voters } = useVoting();
   const { toast } = useToast();
   const [loginData, setLoginData] = useState({ username: '', password: '' });
   const [candidateData, setCandidateData] = useState({ name: '', party: '', symbol: '' });
-  const [editingCandidate, setEditingCandidate] = useState<string | null>(null);
-  const [editData, setEditData] = useState({ name: '', party: '', symbol: '' });
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,48 +48,6 @@ const AdminDashboard = () => {
       title: "Candidate Added",
       description: "New candidate has been added successfully.",
     });
-  };
-
-  const handleEditCandidate = (candidate: any) => {
-    setEditingCandidate(candidate.id);
-    setEditData({
-      name: candidate.name,
-      party: candidate.party,
-      symbol: candidate.symbol
-    });
-  };
-
-  const handleSaveEdit = (candidateId: string) => {
-    if (!editData.name || !editData.party || !editData.symbol) {
-      toast({
-        title: "Missing Fields",
-        description: "Please fill in all candidate details.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const result = updateCandidate(candidateId, editData);
-    
-    if (result.success) {
-      setEditingCandidate(null);
-      setEditData({ name: '', party: '', symbol: '' });
-      toast({
-        title: "Candidate Updated",
-        description: result.message,
-      });
-    } else {
-      toast({
-        title: "Update Failed",
-        description: result.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setEditingCandidate(null);
-    setEditData({ name: '', party: '', symbol: '' });
   };
 
   if (!isAdminAuthenticated) {
@@ -291,81 +246,14 @@ const AdminDashboard = () => {
           <div className="grid md:grid-cols-2 gap-4">
             {candidates.map((candidate) => (
               <div key={candidate.id} className="border rounded-lg p-4 bg-gray-50">
-                {editingCandidate === candidate.id ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 gap-3">
-                      <div>
-                        <Label htmlFor={`edit-name-${candidate.id}`}>Name</Label>
-                        <Input
-                          id={`edit-name-${candidate.id}`}
-                          value={editData.name}
-                          onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-                          placeholder="Candidate name"
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor={`edit-party-${candidate.id}`}>Party</Label>
-                        <Input
-                          id={`edit-party-${candidate.id}`}
-                          value={editData.party}
-                          onChange={(e) => setEditData({ ...editData, party: e.target.value })}
-                          placeholder="Party name"
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor={`edit-symbol-${candidate.id}`}>Symbol</Label>
-                        <Input
-                          id={`edit-symbol-${candidate.id}`}
-                          value={editData.symbol}
-                          onChange={(e) => setEditData({ ...editData, symbol: e.target.value })}
-                          placeholder="🔵 🔴 ⭐"
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button 
-                        onClick={() => handleSaveEdit(candidate.id)}
-                        className="bg-green-600 hover:bg-green-700 flex items-center space-x-1"
-                        size="sm"
-                      >
-                        <Save className="h-3 w-3" />
-                        <span>Save</span>
-                      </Button>
-                      <Button 
-                        onClick={handleCancelEdit}
-                        variant="outline"
-                        className="flex items-center space-x-1"
-                        size="sm"
-                      >
-                        <X className="h-3 w-3" />
-                        <span>Cancel</span>
-                      </Button>
-                    </div>
+                <div className="flex items-center space-x-4">
+                  <span className="text-3xl">{candidate.symbol}</span>
+                  <div>
+                    <h3 className="font-semibold text-lg">{candidate.name}</h3>
+                    <p className="text-gray-600">{candidate.party}</p>
+                    <p className="text-sm text-blue-600">Votes: {candidate.voteCount}</p>
                   </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <span className="text-3xl">{candidate.symbol}</span>
-                      <div>
-                        <h3 className="font-semibold text-lg">{candidate.name}</h3>
-                        <p className="text-gray-600">{candidate.party}</p>
-                        <p className="text-sm text-blue-600">Votes: {candidate.voteCount}</p>
-                      </div>
-                    </div>
-                    <Button
-                      onClick={() => handleEditCandidate(candidate)}
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center space-x-1"
-                    >
-                      <Edit2 className="h-3 w-3" />
-                      <span>Edit</span>
-                    </Button>
-                  </div>
-                )}
+                </div>
               </div>
             ))}
           </div>
