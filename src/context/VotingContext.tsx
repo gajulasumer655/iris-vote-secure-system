@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 interface Voter {
@@ -24,6 +25,7 @@ interface VotingContextType {
   candidates: Candidate[];
   registerVoter: (voter: Omit<Voter, 'id' | 'hasVoted'>) => { success: boolean; message: string };
   addCandidate: (candidate: Omit<Candidate, 'id' | 'voteCount'>) => void;
+  updateCandidate: (candidateId: string, updates: Omit<Candidate, 'id' | 'voteCount'>) => { success: boolean; message: string };
   castVote: (candidateId: string, voterId: string) => boolean;
   verifyVoter: (aadhaar: string, voterId: string, name: string, faceData: string) => { success: boolean; message: string; voter?: Voter };
   updateVoter: (voterId: string, updates: Partial<Omit<Voter, 'id'>>) => { success: boolean; message: string };
@@ -822,6 +824,46 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setCandidates(prev => [...prev, newCandidate]);
   };
 
+  const updateCandidate = (candidateId: string, updates: Omit<Candidate, 'id' | 'voteCount'>): { success: boolean; message: string } => {
+    console.log('=== UPDATING CANDIDATE ===');
+    console.log('Candidate ID:', candidateId);
+    console.log('Updates:', updates);
+    
+    const candidateIndex = candidates.findIndex(c => c.id === candidateId);
+    
+    if (candidateIndex === -1) {
+      return {
+        success: false,
+        message: "Candidate not found."
+      };
+    }
+    
+    // Check for duplicate candidate names or symbols (excluding the current candidate)
+    const duplicateCandidate = candidates.find(c => 
+      c.id !== candidateId && (
+        c.name.toLowerCase().trim() === updates.name.toLowerCase().trim() ||
+        c.symbol === updates.symbol
+      )
+    );
+    
+    if (duplicateCandidate) {
+      return {
+        success: false,
+        message: "Candidate name or symbol already exists for another candidate."
+      };
+    }
+    
+    setCandidates(prev => prev.map(c => 
+      c.id === candidateId ? { ...c, ...updates } : c
+    ));
+    
+    console.log('Candidate updated successfully');
+    return {
+      success: true,
+      message: "Candidate information updated successfully."
+    };
+  };
+
   const updateVoter = (voterId: string, updates: Partial<Omit<Voter, 'id'>>): { success: boolean; message: string } => {
     console.log('=== UPDATING VOTER ===');
     console.log('Voter ID:', voterId);
@@ -986,6 +1028,7 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       candidates,
       registerVoter,
       addCandidate,
+      updateCandidate,
       castVote,
       verifyVoter,
       updateVoter,
