@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 interface Voter {
@@ -488,9 +487,9 @@ const calculateMaximumSecurityFaceSimilarity = (face1: string, face2: string): n
   return finalScore;
 };
 
-// Face matching algorithm for verification during voting (more lenient)
+// ENHANCED Face matching for verification during voting - MORE STRICT
 const calculateVotingFaceSimilarity = (registeredFace: string, currentFace: string): number => {
-  console.log('=== VOTING FACE VERIFICATION ===');
+  console.log('=== ENHANCED VOTING FACE VERIFICATION ===');
   console.log('Registered face length:', registeredFace.length);
   console.log('Current face length:', currentFace.length);
   
@@ -502,7 +501,7 @@ const calculateVotingFaceSimilarity = (registeredFace: string, currentFace: stri
   
   // Validate both images are proper base64 data URLs
   const isValidImage = (data: string) => {
-    return data.startsWith('data:image/') && data.includes('base64,') && data.length > 3000;
+    return data.startsWith('data:image/') && data.includes('base64,') && data.length > 5000;
   };
   
   if (!isValidImage(registeredFace) || !isValidImage(currentFace)) {
@@ -519,18 +518,18 @@ const calculateVotingFaceSimilarity = (registeredFace: string, currentFace: stri
   const data1 = getBase64(registeredFace);
   const data2 = getBase64(currentFace);
   
-  // More lenient length check for voting
+  // STRICTER length check for voting verification
   const lengthRatio = Math.min(data1.length, data2.length) / Math.max(data1.length, data2.length);
   console.log('Length ratio:', lengthRatio);
   
-  // Don't immediately fail on length difference for voting
-  let lengthScore = lengthRatio;
-  if (lengthRatio < 0.7) {
-    lengthScore = 0.3; // Give some base score even for different lengths
+  // Fail immediately if length difference is too large
+  if (lengthRatio < 0.75) {
+    console.log('Length difference too large - face verification FAILED');
+    return 0;
   }
   
-  // Header analysis (first 300 characters)
-  const headerLength = Math.min(300, Math.min(data1.length, data2.length));
+  // Enhanced header analysis (first 500 characters)
+  const headerLength = Math.min(500, Math.min(data1.length, data2.length));
   let headerMatches = 0;
   
   for (let i = 0; i < headerLength; i++) {
@@ -542,14 +541,23 @@ const calculateVotingFaceSimilarity = (registeredFace: string, currentFace: stri
   const headerSimilarity = headerMatches / headerLength;
   console.log('Header similarity:', headerSimilarity);
   
-  // Simplified segment analysis for voting
-  const numSegments = 10;
+  // Fail if header similarity is too low
+  if (headerSimilarity < 0.7) {
+    console.log('Header similarity too low - face verification FAILED');
+    return 0;
+  }
+  
+  // Enhanced segment analysis for voting
+  const numSegments = 20; // Increased segments for better accuracy
   const segmentSize = Math.floor(Math.min(data1.length, data2.length) / numSegments);
   let totalSegmentSimilarity = 0;
+  let validSegments = 0;
   
   for (let i = 0; i < numSegments; i++) {
     const start = i * segmentSize;
     const end = Math.min(start + segmentSize, Math.min(data1.length, data2.length));
+    
+    if (end - start < 10) continue; // Skip too small segments
     
     const segment1 = data1.substring(start, end);
     const segment2 = data2.substring(start, end);
@@ -565,15 +573,17 @@ const calculateVotingFaceSimilarity = (registeredFace: string, currentFace: stri
     
     const segmentSim = segmentLength > 0 ? matches / segmentLength : 0;
     totalSegmentSimilarity += segmentSim;
+    validSegments++;
   }
   
-  const segmentSimilarity = totalSegmentSimilarity / numSegments;
+  const segmentSimilarity = validSegments > 0 ? totalSegmentSimilarity / validSegments : 0;
   console.log('Segment similarity:', segmentSimilarity);
   
-  // Character frequency analysis for additional verification
+  // Enhanced character frequency analysis
   const getCharFrequency = (str: string) => {
     const freq: { [key: string]: number } = {};
-    for (let i = 0; i < str.length; i += 5) {
+    // Sample every 3rd character for better representation
+    for (let i = 0; i < str.length; i += 3) {
       const char = str[i];
       freq[char] = (freq[char] || 0) + 1;
     }
@@ -599,15 +609,40 @@ const calculateVotingFaceSimilarity = (registeredFace: string, currentFace: stri
   const frequencySimilarity = allChars.size > 0 ? frequencyScore / allChars.size : 0;
   console.log('Frequency similarity:', frequencySimilarity);
   
-  // Weighted combined similarity score (more balanced for voting)
+  // Additional sliding window analysis for enhanced verification
+  const windowSize = 100;
+  const stride = 20;
+  let windowSimilarities: number[] = [];
+  
+  for (let i = 0; i <= Math.min(data1.length, data2.length) - windowSize; i += stride) {
+    const window1 = data1.substring(i, i + windowSize);
+    const window2 = data2.substring(i, i + windowSize);
+    
+    let matches = 0;
+    for (let j = 0; j < windowSize; j++) {
+      if (window1[j] === window2[j]) {
+        matches++;
+      }
+    }
+    
+    windowSimilarities.push(matches / windowSize);
+  }
+  
+  const avgWindowSimilarity = windowSimilarities.length > 0 ? 
+    windowSimilarities.reduce((a, b) => a + b, 0) / windowSimilarities.length : 0;
+  
+  console.log('Window similarity:', avgWindowSimilarity);
+  
+  // STRICTER weighted combined similarity score for voting verification
   const combinedScore = (
-    lengthScore * 0.15 +
-    headerSimilarity * 0.35 +
-    segmentSimilarity * 0.35 +
-    frequencySimilarity * 0.15
+    lengthRatio * 0.10 +           // Reduced weight for length
+    headerSimilarity * 0.40 +      // Increased weight for header
+    segmentSimilarity * 0.35 +     // Increased weight for segments
+    frequencySimilarity * 0.10 +   // Reduced weight for frequency
+    avgWindowSimilarity * 0.05     // Added window analysis
   );
   
-  console.log('Voting combined similarity score:', combinedScore);
+  console.log('Enhanced voting combined similarity score:', combinedScore);
   return combinedScore;
 };
 
@@ -689,19 +724,26 @@ const isFaceAlreadyRegistered = (newFaceData: string, existingVoters: Voter[]): 
   return { isDuplicate: false, details: 'No duplicate face patterns detected by maximum security analysis' };
 };
 
-// Face matching for verification (more lenient than registration)
+// ENHANCED Face matching for verification (MUCH MORE STRICT)
 const verifyFaceMatch = (registeredFace: string, currentFace: string): boolean => {
-  console.log('=== FACE VERIFICATION FOR VOTING ===');
+  console.log('=== ENHANCED FACE VERIFICATION FOR VOTING ===');
   
   const similarity = calculateVotingFaceSimilarity(registeredFace, currentFace);
-  console.log('Verification similarity score:', (similarity * 100).toFixed(2) + '%');
+  console.log('Enhanced verification similarity score:', (similarity * 100).toFixed(3) + '%');
   
-  // More lenient threshold for verification (60% similarity)
-  const threshold = 0.60;
+  // MUCH MORE STRICT threshold for verification (80% similarity required)
+  const threshold = 0.80; // Increased from 0.60 to 0.80 for better security
   const isMatch = similarity >= threshold;
   
-  console.log('Verification threshold:', (threshold * 100) + '%');
-  console.log('Face verification result:', isMatch ? 'PASS ✅' : 'FAIL ❌');
+  console.log('Enhanced verification threshold:', (threshold * 100) + '%');
+  console.log('Enhanced face verification result:', isMatch ? 'PASS ✅' : 'FAIL ❌');
+  
+  if (!isMatch) {
+    console.log('❌ FACE VERIFICATION FAILED - Access Denied');
+    console.log(`Similarity ${(similarity * 100).toFixed(3)}% < Required ${(threshold * 100)}%`);
+  } else {
+    console.log('✅ FACE VERIFICATION PASSED - Access Granted');
+  }
   
   return isMatch;
 };
@@ -929,51 +971,53 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   const verifyVoter = (aadhaar: string, voterId: string, name: string, faceData: string) => {
-    console.log('=== VOTER VERIFICATION ATTEMPT ===');
+    console.log('=== ENHANCED VOTER VERIFICATION ATTEMPT ===');
     console.log('Verifying voter:', { aadhaar, voterId, name });
+    console.log('Face data length received:', faceData.length);
     
-    // Find voter by credentials
+    // Find voter by credentials with exact matching
     const voter = voters.find(v => 
-      v.aadhaarNumber === aadhaar && 
-      v.voterId === voterId && 
+      v.aadhaarNumber.trim() === aadhaar.trim() && 
+      v.voterId.trim() === voterId.trim() && 
       v.name.toLowerCase().trim() === name.toLowerCase().trim()
     );
 
     if (!voter) {
-      console.log('Voter not found with provided credentials');
+      console.log('❌ Voter not found with provided credentials');
       return { 
         success: false, 
         message: "Voter details not found. Please check your Aadhaar number, Voter ID, and name exactly as registered."
       };
     }
 
-    console.log('Voter found:', voter.name);
+    console.log('✅ Voter found:', voter.name);
+    console.log('Registered face data length:', voter.faceData.length);
     
     // Check if already voted
     if (voter.hasVoted) {
-      console.log('Voter has already voted');
+      console.log('❌ Voter has already voted');
       return { 
         success: false, 
         message: "You have already cast your vote. Each voter can only vote once per election."
       };
     }
 
-    // Verify face
-    console.log('Starting face verification...');
+    // ENHANCED Face verification with stricter matching
+    console.log('🔒 Starting ENHANCED face verification...');
     const faceMatch = verifyFaceMatch(voter.faceData, faceData);
     
     if (!faceMatch) {
-      console.log('Face verification failed');
+      console.log('❌ ENHANCED face verification FAILED - ACCESS DENIED');
       return { 
         success: false, 
-        message: "Face verification failed. Your face does not match the registered image. Please ensure proper lighting and positioning, or contact the election office if you believe this is an error."
+        message: "Face verification failed. Your face does not match the registered image with sufficient accuracy. Please ensure proper lighting, positioning, and that you are the registered voter. Contact the election office if you believe this is an error."
       };
     }
 
-    console.log('Face verification successful');
+    console.log('✅ ENHANCED face verification SUCCESSFUL - ACCESS GRANTED');
     return { 
       success: true, 
-      message: "Identity verified successfully! You are now authorized to cast your vote.", 
+      message: "Identity verified successfully with enhanced security! You are now authorized to cast your vote.", 
       voter 
     };
   };
