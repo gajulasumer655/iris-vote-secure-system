@@ -100,7 +100,8 @@ const VoteCasting = () => {
   };
 
   const handleVote = (candidateId: string) => {
-    if (verifiedVoter && castVote(candidateId, verifiedVoter.id)) {
+    const result = castVote(candidateId);
+    if (result.success) {
       setStep('success');
       toast({
         title: "Vote Cast Successfully",
@@ -109,7 +110,7 @@ const VoteCasting = () => {
     } else {
       toast({
         title: "Voting Failed",
-        description: "Unable to cast vote. Please try again.",
+        description: result.message,
         variant: "destructive",
       });
     }

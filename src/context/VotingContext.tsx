@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 interface Candidate {
@@ -15,9 +14,12 @@ interface Voter {
   aadhaarNumber: string;
   voterId: string;
   address: string;
+  phoneNumber?: string;
+  email?: string;
   hasVoted: boolean;
   faceCapture?: string;
   irisData?: string;
+  faceData?: string;
 }
 
 interface VotingContextType {
@@ -44,6 +46,7 @@ interface VotingContextType {
   registerVoter: (voter: Omit<Voter, 'id' | 'hasVoted'>) => { success: boolean; message: string };
   updateVoter: (id: string, updates: Partial<Voter>) => { success: boolean; message: string };
   deleteVoter: (id: string) => { success: boolean; message: string };
+  verifyVoter: (aadhaarNumber: string, voterId: string, name: string, faceData: string) => { success: boolean; message: string; voter?: Voter };
   
   // Voting
   castVote: (candidateId: string) => { success: boolean; message: string };
@@ -195,6 +198,21 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       };
     }
 
+    // Check for duplicate face data
+    if (voterData.faceData || voterData.faceCapture) {
+      const faceDataToCheck = voterData.faceData || voterData.faceCapture;
+      const existingFaceVoter = voters.find(v => 
+        v.faceData === faceDataToCheck || v.faceCapture === faceDataToCheck
+      );
+      
+      if (existingFaceVoter) {
+        return { 
+          success: false, 
+          message: 'This face has already been registered. Each face can only be registered once.' 
+        };
+      }
+    }
+
     const newVoter: Voter = {
       ...voterData,
       id: Date.now().toString(),
@@ -255,6 +273,45 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     return { success: true, message: 'Voter deleted successfully.' };
   };
 
+  const verifyVoter = (aadhaarNumber: string, voterId: string, name: string, faceData: string): { success: boolean; message: string; voter?: Voter } => {
+    const voter = voters.find(v => 
+      v.aadhaarNumber === aadhaarNumber && 
+      v.voterId === voterId && 
+      v.name.toLowerCase() === name.toLowerCase()
+    );
+
+    if (!voter) {
+      return { 
+        success: false, 
+        message: 'Voter not found. Please check your details.' 
+      };
+    }
+
+    if (voter.hasVoted) {
+      return { 
+        success: false, 
+        message: 'You have already cast your vote.' 
+      };
+    }
+
+    // Simple face verification (in real implementation, this would use actual face recognition)
+    const storedFaceData = voter.faceData || voter.faceCapture;
+    if (!storedFaceData) {
+      return { 
+        success: false, 
+        message: 'No face data found for verification.' 
+      };
+    }
+
+    // For demo purposes, we'll consider face verification successful
+    // In a real system, this would compare the face data using biometric algorithms
+    return { 
+      success: true, 
+      message: 'Face verification successful.', 
+      voter 
+    };
+  };
+
   const castVote = (candidateId: string): { success: boolean; message: string } => {
     if (!currentUser) {
       return { success: false, message: 'Please log in to vote.' };
@@ -304,6 +361,7 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     registerVoter,
     updateVoter,
     deleteVoter,
+    verifyVoter,
     castVote
   };
 
