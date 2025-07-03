@@ -130,9 +130,9 @@ const validateFaceImageQuality = (faceData: string): { isValid: boolean; score: 
   return { isValid: true, score: 1, details: 'Valid ultra-high-quality face image' };
 };
 
-// IMPROVED FACE MATCHING FOR VOTING VERIFICATION - STRICT PATTERN MATCHING
+// PRACTICAL FACE MATCHING FOR VOTING VERIFICATION - OPTIMIZED FOR REAL-WORLD USE
 const calculateVotingFaceSimilarity = (registeredFace: string, currentFace: string): number => {
-  console.log('=== IMPROVED FACE VERIFICATION FOR VOTING ACCESS ===');
+  console.log('=== PRACTICAL FACE VERIFICATION FOR VOTING ACCESS ===');
   console.log('Registered face length:', registeredFace.length);
   console.log('Current face length:', currentFace.length);
   
@@ -163,105 +163,76 @@ const calculateVotingFaceSimilarity = (registeredFace: string, currentFace: stri
   
   console.log('Base64 data lengths - Registered:', data1.length, 'Current:', data2.length);
   
-  // STRICT LENGTH COMPARISON - Images should be reasonably similar in size
+  // PRACTICAL LENGTH COMPARISON - More lenient for real photos
   const lengthDiff = Math.abs(data1.length - data2.length);
   const avgLength = (data1.length + data2.length) / 2;
-  const lengthSimilarity = 1 - (lengthDiff / avgLength);
+  const lengthSimilarity = Math.max(0.6, 1 - (lengthDiff / avgLength)); // Minimum 60% similarity
   
   console.log('Length similarity:', (lengthSimilarity * 100).toFixed(2) + '%');
   
-  // If images are vastly different in size, they're likely different faces
-  if (lengthSimilarity < 0.5) {
-    console.log('❌ VERIFICATION FAILED - Images too different in size');
-    return 0;
-  }
-  
-  // CRITICAL HEADER ANALYSIS - First 2000 characters contain crucial image metadata
-  const headerLength = Math.min(2000, Math.min(data1.length, data2.length));
-  let headerMatches = 0;
-  
-  for (let i = 0; i < headerLength; i++) {
-    if (data1[i] === data2[i]) {
-      headerMatches++;
-    }
-  }
-  
-  const headerSimilarity = headerMatches / headerLength;
-  console.log('Header similarity (critical):', (headerSimilarity * 100).toFixed(2) + '%');
-  
-  // MULTI-SEGMENT DEEP ANALYSIS
-  const performSegmentAnalysis = () => {
-    const segments = 20; // Analyze 20 segments of the image
-    const segmentSize = Math.floor(Math.min(data1.length, data2.length) / segments);
-    let totalSegmentScore = 0;
+  // SMART PATTERN ANALYSIS - Focus on meaningful patterns
+  const analyzeImagePatterns = () => {
+    // Sample key sections of the image data for comparison
+    const sampleSize = Math.min(5000, Math.min(data1.length, data2.length));
+    const sections = 10; // Analyze 10 sections
+    const sectionSize = Math.floor(sampleSize / sections);
     
-    for (let i = 0; i < segments; i++) {
-      const start = i * segmentSize;
-      const end = start + segmentSize;
+    let totalSimilarity = 0;
+    
+    for (let i = 0; i < sections; i++) {
+      const start = i * sectionSize;
+      const end = start + sectionSize;
       
-      const segment1 = data1.substring(start, end);
-      const segment2 = data2.substring(start, end);
+      const section1 = data1.substring(start, end);
+      const section2 = data2.substring(start, end);
       
-      let matches = 0;
-      for (let j = 0; j < segmentSize; j++) {
-        if (segment1[j] === segment2[j]) {
-          matches++;
+      // Calculate character frequency similarity for this section
+      const freq1: { [key: string]: number } = {};
+      const freq2: { [key: string]: number } = {};
+      
+      // Count character frequencies
+      for (const char of section1) {
+        freq1[char] = (freq1[char] || 0) + 1;
+      }
+      for (const char of section2) {
+        freq2[char] = (freq2[char] || 0) + 1;
+      }
+      
+      // Calculate similarity based on frequency patterns
+      const allChars = new Set([...Object.keys(freq1), ...Object.keys(freq2)]);
+      let sectionSimilarity = 0;
+      
+      for (const char of allChars) {
+        const f1 = freq1[char] || 0;
+        const f2 = freq2[char] || 0;
+        const maxFreq = Math.max(f1, f2);
+        
+        if (maxFreq > 0) {
+          sectionSimilarity += Math.min(f1, f2) / maxFreq;
         }
       }
       
-      totalSegmentScore += matches / segmentSize;
+      totalSimilarity += sectionSimilarity / allChars.size;
     }
     
-    return totalSegmentScore / segments;
+    return totalSimilarity / sections;
   };
   
-  const segmentSimilarity = performSegmentAnalysis();
-  console.log('Segment-wise similarity:', (segmentSimilarity * 100).toFixed(2) + '%');
+  const patternSimilarity = analyzeImagePatterns();
+  console.log('Smart pattern similarity:', (patternSimilarity * 100).toFixed(2) + '%');
   
-  // CHARACTER FREQUENCY ANALYSIS - Face images have distinctive patterns
-  const performFrequencyAnalysis = () => {
-    const getCharFrequency = (str: string) => {
-      const freq: { [key: string]: number } = {};
-      // Sample every 5th character for performance
-      for (let i = 0; i < str.length; i += 5) {
-        const char = str[i];
-        freq[char] = (freq[char] || 0) + 1;
-      }
-      return freq;
-    };
-    
-    const freq1 = getCharFrequency(data1);
-    const freq2 = getCharFrequency(data2);
-    
-    const allChars = new Set([...Object.keys(freq1), ...Object.keys(freq2)]);
-    let frequencyScore = 0;
-    let totalComparisons = 0;
-    
-    for (const char of allChars) {
-      const f1 = freq1[char] || 0;
-      const f2 = freq2[char] || 0;
-      const maxFreq = Math.max(f1, f2);
-      
-      if (maxFreq > 0) {
-        frequencyScore += Math.min(f1, f2) / maxFreq;
-        totalComparisons++;
-      }
-    }
-    
-    return totalComparisons > 0 ? frequencyScore / totalComparisons : 0;
-  };
-  
-  const frequencySimilarity = performFrequencyAnalysis();
-  console.log('Character frequency similarity:', (frequencySimilarity * 100).toFixed(2) + '%');
-  
-  // SLIDING WINDOW ANALYSIS for fine-grained pattern matching
-  const performSlidingWindowAnalysis = () => {
+  // OPTIMIZED SLIDING WINDOW - Focus on key image regions
+  const optimizedSlidingWindow = () => {
     const windowSize = 200;
-    const stride = 100;
-    let totalWindowScore = 0;
+    const stride = 150;
+    const maxWindows = 20; // Limit for performance
+    
+    let totalScore = 0;
     let windowCount = 0;
     
-    for (let i = 0; i <= Math.min(data1.length, data2.length) - windowSize; i += stride) {
+    const maxLength = Math.min(data1.length, data2.length);
+    
+    for (let i = 0; i < maxLength - windowSize && windowCount < maxWindows; i += stride) {
       const window1 = data1.substring(i, i + windowSize);
       const window2 = data2.substring(i, i + windowSize);
       
@@ -272,79 +243,62 @@ const calculateVotingFaceSimilarity = (registeredFace: string, currentFace: stri
         }
       }
       
-      totalWindowScore += matches / windowSize;
+      totalScore += matches / windowSize;
       windowCount++;
     }
     
-    return windowCount > 0 ? totalWindowScore / windowCount : 0;
+    return windowCount > 0 ? totalScore / windowCount : 0;
   };
   
-  const slidingWindowSimilarity = performSlidingWindowAnalysis();
-  console.log('Sliding window similarity:', (slidingWindowSimilarity * 100).toFixed(2) + '%');
+  const slidingWindowSimilarity = optimizedSlidingWindow();
+  console.log('Optimized sliding window similarity:', (slidingWindowSimilarity * 100).toFixed(2) + '%');
   
-  // PATTERN ANALYSIS - Look for repeating patterns in the image data
-  const performPatternAnalysis = () => {
-    const analyzePatterns = (data: string) => {
-      let repeatingChars = 0;
-      let alternatingPatterns = 0;
+  // STATISTICAL FINGERPRINT - Analyze image characteristics
+  const statisticalFingerprint = () => {
+    const getStats = (data: string) => {
+      const sample = data.substring(0, Math.min(10000, data.length)); // Sample for performance
+      const values = sample.split('').map(c => c.charCodeAt(0));
       
-      for (let i = 0; i < Math.min(data.length - 1, 10000); i++) { // Limit for performance
-        if (data[i] === data[i + 1]) repeatingChars++;
-        if (i > 0 && data[i - 1] === data[i + 1] && data[i - 1] !== data[i]) {
-          alternatingPatterns++;
-        }
-      }
+      const mean = values.reduce((a, b) => a + b, 0) / values.length;
+      const variance = values.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / values.length;
       
-      return { repeatingChars, alternatingPatterns };
+      return { mean, variance };
     };
     
-    const patterns1 = analyzePatterns(data1);
-    const patterns2 = analyzePatterns(data2);
+    const stats1 = getStats(data1);
+    const stats2 = getStats(data2);
     
-    const comparePatterns = (p1: number, p2: number) => {
-      const maxPattern = Math.max(p1, p2);
-      return maxPattern > 0 ? Math.min(p1, p2) / maxPattern : 1;
-    };
+    const meanSim = 1 - Math.abs(stats1.mean - stats2.mean) / Math.max(stats1.mean, stats2.mean);
+    const varSim = 1 - Math.abs(stats1.variance - stats2.variance) / Math.max(stats1.variance, stats2.variance);
     
-    const patternSimilarity = (
-      comparePatterns(patterns1.repeatingChars, patterns2.repeatingChars) +
-      comparePatterns(patterns1.alternatingPatterns, patterns2.alternatingPatterns)
-    ) / 2;
-    
-    return patternSimilarity;
+    return (meanSim + varSim) / 2;
   };
   
-  const patternSimilarity = performPatternAnalysis();
-  console.log('Pattern similarity:', (patternSimilarity * 100).toFixed(2) + '%');
+  const statSimilarity = statisticalFingerprint();
+  console.log('Statistical fingerprint similarity:', (statSimilarity * 100).toFixed(2) + '%');
   
-  // WEIGHTED COMPOSITE SCORE - More emphasis on critical features
+  // PRACTICAL WEIGHTED COMPOSITE SCORE - Optimized for real-world voting
   const weights = {
-    length: 0.10,
-    header: 0.35,      // Header is most important - contains image metadata
-    segment: 0.25,     // Segment analysis is crucial for face structure
-    frequency: 0.15,   // Character frequency shows image characteristics
-    slidingWindow: 0.10, // Fine-grained pattern matching
-    pattern: 0.05      // General pattern analysis
+    length: 0.15,         // Basic size similarity
+    pattern: 0.40,        // Smart pattern analysis (most important)
+    slidingWindow: 0.25,  // Optimized window matching
+    statistical: 0.20     // Statistical fingerprint
   };
   
   const finalScore = (
     lengthSimilarity * weights.length +
-    headerSimilarity * weights.header +
-    segmentSimilarity * weights.segment +
-    frequencySimilarity * weights.frequency +
+    patternSimilarity * weights.pattern +
     slidingWindowSimilarity * weights.slidingWindow +
-    patternSimilarity * weights.pattern
+    statSimilarity * weights.statistical
   );
   
-  console.log('=== IMPROVED FACE VERIFICATION BREAKDOWN ===');
+  console.log('=== PRACTICAL FACE VERIFICATION BREAKDOWN ===');
   console.log(`Length: ${(lengthSimilarity * 100).toFixed(1)}% (weight: ${weights.length})`);
-  console.log(`Header: ${(headerSimilarity * 100).toFixed(1)}% (weight: ${weights.header})`);
-  console.log(`Segment: ${(segmentSimilarity * 100).toFixed(1)}% (weight: ${weights.segment})`);
-  console.log(`Frequency: ${(frequencySimilarity * 100).toFixed(1)}% (weight: ${weights.frequency})`);
-  console.log(`Sliding Window: ${(slidingWindowSimilarity * 100).toFixed(1)}% (weight: ${weights.slidingWindow})`);
   console.log(`Pattern: ${(patternSimilarity * 100).toFixed(1)}% (weight: ${weights.pattern})`);
-  console.log(`🎯 FINAL VERIFICATION SCORE: ${(finalScore * 100).toFixed(2)}%`);
-  console.log('=== IMPROVED FACE VERIFICATION COMPLETE ===');
+  console.log(`Sliding Window: ${(slidingWindowSimilarity * 100).toFixed(1)}% (weight: ${weights.slidingWindow})`);
+  console.log(`Statistical: ${(statSimilarity * 100).toFixed(1)}% (weight: ${weights.statistical})`);
+  console.log(`🎯 FINAL PRACTICAL VERIFICATION SCORE: ${(finalScore * 100).toFixed(2)}%`);
+  console.log('=== PRACTICAL FACE VERIFICATION COMPLETE ===');
 
   return finalScore;
 };
@@ -784,15 +738,15 @@ const isFaceAlreadyRegistered = (newFaceData: string, existingVoters: Voter[]): 
   return { isDuplicate: false, details: 'No duplicate face patterns detected by maximum security analysis' };
 };
 
-// STRICT FACE VERIFICATION FOR VOTING (75% accuracy requirement)
+// PRACTICAL FACE VERIFICATION FOR VOTING (70% accuracy requirement)
 const verifyFaceMatch = (registeredFace: string, currentFace: string): boolean => {
-  console.log('=== STRICT FACE VERIFICATION FOR VOTING ACCESS ===');
+  console.log('=== PRACTICAL FACE VERIFICATION FOR VOTING ACCESS ===');
   
   const similarity = calculateVotingFaceSimilarity(registeredFace, currentFace);
   console.log('🎯 Final verification similarity score:', (similarity * 100).toFixed(3) + '%');
   
-  // STRICT THRESHOLD: 75% similarity for voting access
-  const VOTING_THRESHOLD = 0.75; // 75% threshold for proper verification
+  // PRACTICAL THRESHOLD: 70% similarity for voting access (reduced from 75%)
+  const VOTING_THRESHOLD = 0.70; // 70% threshold for practical verification
   const isMatch = similarity >= VOTING_THRESHOLD;
   
   console.log('Required threshold:', (VOTING_THRESHOLD * 100) + '%');
@@ -1030,7 +984,7 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   const verifyVoter = (aadhaar: string, voterId: string, name: string, faceData: string) => {
-    console.log('=== VOTER VERIFICATION ATTEMPT (70-80% FACE ACCURACY) ===');
+    console.log('=== VOTER VERIFICATION ATTEMPT (70% FACE ACCURACY) ===');
     console.log('Verifying voter:', { aadhaar, voterId, name });
     
     // Find voter by credentials
@@ -1059,15 +1013,15 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       };
     }
 
-    // FACE VERIFICATION WITH 70-80% ACCURACY REQUIREMENT
-    console.log('🔒 Starting face verification (75% accuracy threshold)...');
+    // FACE VERIFICATION WITH 70% ACCURACY REQUIREMENT
+    console.log('🔒 Starting face verification (70% accuracy threshold)...');
     const faceMatch = verifyFaceMatch(voter.faceData, faceData);
     
     if (!faceMatch) {
       console.log('🚫 FACE VERIFICATION FAILED - ACCESS DENIED');
       return { 
         success: false, 
-        message: "🚫 Face verification failed. Your face does not meet the required 75% similarity match with your registered image. Please ensure proper lighting, clear visibility of your face, and try again. If the issue persists, contact the election office."
+        message: "🚫 Face verification failed. Your face does not meet the required 70% similarity match with your registered image. Please ensure proper lighting, clear visibility of your face, and try again. If the issue persists, contact the election office."
       };
     }
 
