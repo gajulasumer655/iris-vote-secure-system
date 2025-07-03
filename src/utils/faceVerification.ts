@@ -42,12 +42,14 @@ export const calculateStrictVotingFaceSimilarity = (registeredFace: string, curr
   
   // ENHANCED PATTERN ANALYSIS WITH HIGHER PRECISION
   const analyzeImagePatterns = () => {
-    const sampleSize = Math.min(12000, Math.min(data1.length, data2.length));
-    const sections = 25;
+    const sampleSize = Math.min(15000, Math.min(data1.length, data2.length));
+    const sections = 30;
     const sectionSize = Math.floor(sampleSize / sections);
     
     let totalSimilarity = 0;
     let validSections = 0;
+    
+    console.log(`🔍 Analyzing ${sections} sections with ${sectionSize} chars each`);
     
     for (let i = 0; i < sections; i++) {
       const start = i * sectionSize;
@@ -71,6 +73,10 @@ export const calculateStrictVotingFaceSimilarity = (registeredFace: string, curr
       const sectionSimilarity = exactMatches / minLength;
       totalSimilarity += sectionSimilarity;
       validSections++;
+      
+      if (i % 10 === 0) {
+        console.log(`Section ${i}: ${(sectionSimilarity * 100).toFixed(1)}% match`);
+      }
     }
     
     return validSections > 0 ? totalSimilarity / validSections : 0;
@@ -167,6 +173,8 @@ export const calculateStrictVotingFaceSimilarity = (registeredFace: string, curr
   console.log(`Sliding Window: ${(slidingWindowSimilarity * 100).toFixed(1)}% (weight: ${weights.slidingWindow})`);
   console.log(`Statistical: ${(statSimilarity * 100).toFixed(1)}% (weight: ${weights.statistical})`);
   console.log(`🎯 FINAL STRICT VERIFICATION SCORE: ${(finalScore * 100).toFixed(2)}%`);
+  console.log(`📊 FACE DISTANCE: ${(1 - finalScore).toFixed(4)} (lower is better)`);
+  console.log(`🎯 MATCH QUALITY: ${finalScore >= 0.75 ? '✅ EXCELLENT' : finalScore >= 0.60 ? '⚠️ MODERATE' : '❌ POOR'}`);
   console.log('=== STRICT VOTING FACE VERIFICATION COMPLETE ===');
 
   return finalScore;

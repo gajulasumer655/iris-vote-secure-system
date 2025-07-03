@@ -186,7 +186,7 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   const authenticateAdmin = (username: string, password: string) => {
-    if ((username === 'vamshi' || username === 'sumer') && password === 'admin123') {
+    if ((username === 'vamshi' && password === 'vamshi') || (username === 'sumer' && password === 'sumer')) {
       setIsAdminAuthenticated(true);
       return true;
     }
