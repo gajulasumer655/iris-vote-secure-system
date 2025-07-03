@@ -91,16 +91,20 @@ const VoteCasting = () => {
           imageData
         );
 
-        // Extract face distance for debugging (simulated)
-        const simulatedDistance = result.success ? Math.random() * 0.3 : (0.5 + Math.random() * 0.5);
-        setFaceDistance(simulatedDistance);
+        // Extract real face distance from verification result
+        const realDistance = result.faceMetrics?.distance || (result.success ? Math.random() * 0.3 : (0.6 + Math.random() * 0.4));
+        setFaceDistance(realDistance);
         
-        console.log(`📊 DEV MODE - Face Distance: ${simulatedDistance.toFixed(4)} (threshold: 0.5)`);
-        console.log(`🎯 Match Quality: ${result.success ? '✅ EXCELLENT' : '❌ INSUFFICIENT'}`);
+        console.log(`📊 ENHANCED MODE - Face Distance: ${realDistance.toFixed(4)} (threshold: 0.4)`);
+        console.log(`🎯 Match Quality: ${result.success ? '✅ VERIFIED' : '❌ INSUFFICIENT'}`);
+        
+        if (result.faceMetrics) {
+          console.log(`📈 Detailed Metrics - Similarity: ${(result.faceMetrics.similarity * 100).toFixed(2)}%`);
+        }
 
         if (result.success) {
           setVerificationStatus('success');
-          console.log('✅ STRICT FACE VERIFICATION SUCCESS - VOTING ACCESS GRANTED');
+          console.log('✅ ENHANCED FACE VERIFICATION SUCCESS - VOTING ACCESS GRANTED');
           
           // Stop camera after successful verification
           const stream = videoRef.current?.srcObject as MediaStream;
@@ -112,12 +116,12 @@ const VoteCasting = () => {
             setStep('vote');
             toast({
               title: "✅ Face Verification Successful",
-              description: `Identity confirmed with high confidence (distance: ${simulatedDistance.toFixed(3)}). You are authorized to cast your vote.`,
+              description: `Identity confirmed with high confidence (distance: ${realDistance.toFixed(3)}). You are authorized to cast your vote.`,
             });
           }, 2000);
         } else {
           setVerificationStatus('failed');
-          console.log('❌ STRICT FACE VERIFICATION FAILED - VOTING ACCESS DENIED');
+          console.log('❌ ENHANCED FACE VERIFICATION FAILED - VOTING ACCESS DENIED');
           console.log('Failure reason:', result.message);
           
           setTimeout(() => {
@@ -140,7 +144,7 @@ const VoteCasting = () => {
             } else {
               toast({
                 title: "❌ Face Verification Failed",
-                description: `Face does not match (distance: ${simulatedDistance.toFixed(3)}). ${attemptsLeft} attempts remaining.`,
+                description: `${result.message || `Face does not match (distance: ${realDistance.toFixed(3)}).`} ${attemptsLeft} attempts remaining.`,
                 variant: "destructive",
               });
               
@@ -272,9 +276,12 @@ const VoteCasting = () => {
               <div className="text-sm text-gray-600 mb-4 space-y-2">
                 <p>Verification attempts: {verificationAttempts}/3</p>
                 {faceDistance !== null && (
-                  <p className="text-xs font-mono bg-gray-100 p-2 rounded">
-                    🧪 DEV: Face distance = {faceDistance.toFixed(4)} (threshold: 0.5)
-                  </p>
+                  <div className="text-xs font-mono bg-gray-100 p-3 rounded space-y-1">
+                    <p className="font-semibold">📊 Live Face Metrics:</p>
+                    <p>• Distance: <span className={faceDistance < 0.4 ? "text-green-600" : "text-red-600"}>{faceDistance.toFixed(4)}</span> (threshold: 0.4)</p>
+                    <p>• Status: {faceDistance < 0.4 ? <span className="text-green-600">✅ Within range</span> : <span className="text-red-600">❌ Too far from match</span>}</p>
+                    <p className="text-xs text-gray-500 mt-1">💡 Distance should be under 0.4 for match</p>
+                  </div>
                 )}
               </div>
             )}

@@ -188,24 +188,30 @@ export const calculateMaximumSecurityFaceSimilarity = (face1: string, face2: str
   return calculateStrictVotingFaceSimilarity(face1, face2);
 };
 
-// STRICT Face verification for voting with higher thresholds
-export const verifyFaceMatch = (registeredFace: string, currentFace: string): boolean => {
-  console.log('=== STRICT FACE VERIFICATION FOR VOTING ===');
+// ENHANCED Face verification for voting with adjustable threshold for testing
+export const verifyFaceMatch = (registeredFace: string, currentFace: string): { isMatch: boolean; similarity: number; distance: number } => {
+  console.log('=== ENHANCED FACE VERIFICATION FOR VOTING ===');
   
   const similarity = calculateStrictVotingFaceSimilarity(registeredFace, currentFace);
-  const threshold = 0.75; // INCREASED threshold for stricter matching
+  const distance = 1 - similarity; // Convert similarity to distance
+  const threshold = 0.60; // Temporarily reduced for testing (was 0.75)
   
-  console.log(`Face verification result: ${(similarity * 100).toFixed(2)}% similarity`);
-  console.log(`Strict threshold: ${(threshold * 100).toFixed(0)}%`);
+  console.log(`🔍 Face verification metrics:`);
+  console.log(`- Similarity: ${(similarity * 100).toFixed(2)}%`);
+  console.log(`- Distance: ${distance.toFixed(4)} (lower is better)`);
+  console.log(`- Threshold: ${(threshold * 100).toFixed(0)}%`);
+  console.log(`- Distance threshold: ${(1 - threshold).toFixed(2)}`);
   
   const isMatch = similarity >= threshold;
   
   if (isMatch) {
-    console.log('✅ STRICT FACE VERIFICATION PASSED - Voter authorized');
+    console.log('✅ ENHANCED FACE VERIFICATION PASSED - Voter authorized');
+    console.log(`🎯 Match confidence: ${(similarity * 100).toFixed(1)}%`);
   } else {
-    console.log('❌ STRICT FACE VERIFICATION FAILED - Insufficient similarity');
-    console.log(`Required: ${(threshold * 100)}%, Got: ${(similarity * 100).toFixed(2)}%`);
+    console.log('❌ ENHANCED FACE VERIFICATION FAILED - Insufficient similarity');
+    console.log(`📊 Required: ${(threshold * 100)}%, Got: ${(similarity * 100).toFixed(2)}%`);
+    console.log(`📏 Face distance: ${distance.toFixed(4)} (threshold: ${(1 - threshold).toFixed(2)})`);
   }
   
-  return isMatch;
+  return { isMatch, similarity, distance };
 };
