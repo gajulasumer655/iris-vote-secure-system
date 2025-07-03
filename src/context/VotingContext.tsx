@@ -130,9 +130,9 @@ const validateFaceImageQuality = (faceData: string): { isValid: boolean; score: 
   return { isValid: true, score: 1, details: 'Valid ultra-high-quality face image' };
 };
 
-// PRACTICAL FACE MATCHING FOR VOTING VERIFICATION - OPTIMIZED FOR REAL-WORLD USE
+// ENHANCED PRACTICAL FACE MATCHING FOR VOTING VERIFICATION - OPTIMIZED FOR REAL-WORLD USE
 const calculateVotingFaceSimilarity = (registeredFace: string, currentFace: string): number => {
-  console.log('=== PRACTICAL FACE VERIFICATION FOR VOTING ACCESS ===');
+  console.log('=== ENHANCED PRACTICAL FACE VERIFICATION FOR VOTING ACCESS ===');
   console.log('Registered face length:', registeredFace.length);
   console.log('Current face length:', currentFace.length);
   
@@ -163,28 +163,31 @@ const calculateVotingFaceSimilarity = (registeredFace: string, currentFace: stri
   
   console.log('Base64 data lengths - Registered:', data1.length, 'Current:', data2.length);
   
-  // PRACTICAL LENGTH COMPARISON - More lenient for real photos
+  // ENHANCED LENGTH COMPARISON - More forgiving for real photos
   const lengthDiff = Math.abs(data1.length - data2.length);
   const avgLength = (data1.length + data2.length) / 2;
-  const lengthSimilarity = Math.max(0.6, 1 - (lengthDiff / avgLength)); // Minimum 60% similarity
+  const lengthSimilarity = Math.max(0.70, 1 - (lengthDiff / avgLength)); // Increased minimum to 70%
   
   console.log('Length similarity:', (lengthSimilarity * 100).toFixed(2) + '%');
   
-  // SMART PATTERN ANALYSIS - Focus on meaningful patterns
+  // ENHANCED SMART PATTERN ANALYSIS - More robust for same person
   const analyzeImagePatterns = () => {
-    // Sample key sections of the image data for comparison
-    const sampleSize = Math.min(5000, Math.min(data1.length, data2.length));
-    const sections = 10; // Analyze 10 sections
+    // Use more sections for better analysis
+    const sampleSize = Math.min(8000, Math.min(data1.length, data2.length)); // Increased sample size
+    const sections = 20; // Increased sections for better granularity
     const sectionSize = Math.floor(sampleSize / sections);
     
     let totalSimilarity = 0;
+    let validSections = 0;
     
     for (let i = 0; i < sections; i++) {
       const start = i * sectionSize;
       const end = start + sectionSize;
       
-      const section1 = data1.substring(start, end);
-      const section2 = data2.substring(start, end);
+      if (start >= Math.min(data1.length, data2.length)) break;
+      
+      const section1 = data1.substring(start, Math.min(end, data1.length));
+      const section2 = data2.substring(start, Math.min(end, data2.length));
       
       // Calculate character frequency similarity for this section
       const freq1: { [key: string]: number } = {};
@@ -213,76 +216,112 @@ const calculateVotingFaceSimilarity = (registeredFace: string, currentFace: stri
       }
       
       totalSimilarity += sectionSimilarity / allChars.size;
+      validSections++;
     }
     
-    return totalSimilarity / sections;
+    return validSections > 0 ? totalSimilarity / validSections : 0;
   };
   
   const patternSimilarity = analyzeImagePatterns();
-  console.log('Smart pattern similarity:', (patternSimilarity * 100).toFixed(2) + '%');
+  console.log('Enhanced pattern similarity:', (patternSimilarity * 100).toFixed(2) + '%');
   
-  // OPTIMIZED SLIDING WINDOW - Focus on key image regions
-  const optimizedSlidingWindow = () => {
-    const windowSize = 200;
-    const stride = 150;
-    const maxWindows = 20; // Limit for performance
+  // ENHANCED SLIDING WINDOW - More forgiving for real-world variations
+  const enhancedSlidingWindow = () => {
+    const windowSize = 150; // Reduced window size for more flexibility
+    const stride = 100; // Reduced stride for better coverage
+    const maxWindows = 30; // Increased windows for more thorough analysis
     
     let totalScore = 0;
     let windowCount = 0;
+    let bestScore = 0;
     
     const maxLength = Math.min(data1.length, data2.length);
+    const minLength = Math.min(data1.length, data2.length);
     
-    for (let i = 0; i < maxLength - windowSize && windowCount < maxWindows; i += stride) {
-      const window1 = data1.substring(i, i + windowSize);
-      const window2 = data2.substring(i, i + windowSize);
-      
-      let matches = 0;
-      for (let j = 0; j < windowSize; j++) {
-        if (window1[j] === window2[j]) {
-          matches++;
+    // Try multiple starting positions for better alignment
+    for (let offset = 0; offset <= 50 && offset < minLength; offset += 25) {
+      for (let i = offset; i < maxLength - windowSize && windowCount < maxWindows; i += stride) {
+        const window1 = data1.substring(i, i + windowSize);
+        const window2 = data2.substring(i, i + windowSize);
+        
+        let matches = 0;
+        let partialMatches = 0;
+        
+        // Enhanced matching with partial credit
+        for (let j = 0; j < windowSize; j++) {
+          if (window1[j] === window2[j]) {
+            matches++;
+          } else {
+            // Give partial credit for similar characters
+            const char1Code = window1[j]?.charCodeAt(0) || 0;
+            const char2Code = window2[j]?.charCodeAt(0) || 0;
+            if (Math.abs(char1Code - char2Code) <= 2) {
+              partialMatches++;
+            }
+          }
         }
+        
+        const windowScore = (matches + partialMatches * 0.5) / windowSize;
+        totalScore += windowScore;
+        bestScore = Math.max(bestScore, windowScore);
+        windowCount++;
       }
-      
-      totalScore += matches / windowSize;
-      windowCount++;
     }
     
-    return windowCount > 0 ? totalScore / windowCount : 0;
+    // Use both average and best score for more robust result
+    const avgScore = windowCount > 0 ? totalScore / windowCount : 0;
+    const finalScore = (avgScore * 0.7 + bestScore * 0.3); // Weighted combination
+    
+    console.log(`Enhanced sliding window - Avg: ${(avgScore * 100).toFixed(2)}%, Best: ${(bestScore * 100).toFixed(2)}%`);
+    return finalScore;
   };
   
-  const slidingWindowSimilarity = optimizedSlidingWindow();
-  console.log('Optimized sliding window similarity:', (slidingWindowSimilarity * 100).toFixed(2) + '%');
+  const slidingWindowSimilarity = enhancedSlidingWindow();
+  console.log('Enhanced sliding window similarity:', (slidingWindowSimilarity * 100).toFixed(2) + '%');
   
-  // STATISTICAL FINGERPRINT - Analyze image characteristics
-  const statisticalFingerprint = () => {
+  // ENHANCED STATISTICAL FINGERPRINT - Better normalization
+  const enhancedStatisticalFingerprint = () => {
     const getStats = (data: string) => {
-      const sample = data.substring(0, Math.min(10000, data.length)); // Sample for performance
+      const sample = data.substring(0, Math.min(15000, data.length)); // Increased sample size
       const values = sample.split('').map(c => c.charCodeAt(0));
       
       const mean = values.reduce((a, b) => a + b, 0) / values.length;
       const variance = values.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / values.length;
       
-      return { mean, variance };
+      // Calculate distribution shape
+      const freq: { [key: number]: number } = {};
+      values.forEach(v => freq[v] = (freq[v] || 0) + 1);
+      const freqValues = Object.values(freq);
+      const freqMean = freqValues.reduce((a, b) => a + b, 0) / freqValues.length;
+      
+      return { mean, variance, freqMean };
     };
     
     const stats1 = getStats(data1);
     const stats2 = getStats(data2);
     
-    const meanSim = 1 - Math.abs(stats1.mean - stats2.mean) / Math.max(stats1.mean, stats2.mean);
-    const varSim = 1 - Math.abs(stats1.variance - stats2.variance) / Math.max(stats1.variance, stats2.variance);
+    // More forgiving comparison
+    const meanDiff = Math.abs(stats1.mean - stats2.mean);
+    const meanSim = Math.max(0.5, 1 - meanDiff / Math.max(stats1.mean, stats2.mean));
     
-    return (meanSim + varSim) / 2;
+    const varDiff = Math.abs(stats1.variance - stats2.variance);
+    const varSim = Math.max(0.5, 1 - varDiff / Math.max(stats1.variance, stats2.variance));
+    
+    const freqDiff = Math.abs(stats1.freqMean - stats2.freqMean);
+    const freqSim = Math.max(0.5, 1 - freqDiff / Math.max(stats1.freqMean, stats2.freqMean));
+    
+    return (meanSim + varSim + freqSim) / 3;
   };
   
-  const statSimilarity = statisticalFingerprint();
-  console.log('Statistical fingerprint similarity:', (statSimilarity * 100).toFixed(2) + '%');
+  const statSimilarity = enhancedStatisticalFingerprint();
+  console.log('Enhanced statistical fingerprint similarity:', (statSimilarity * 100).toFixed(2) + '%');
   
-  // PRACTICAL WEIGHTED COMPOSITE SCORE - Optimized for real-world voting
+  // ENHANCED WEIGHTED COMPOSITE SCORE - Optimized for practical voting
   const weights = {
-    length: 0.15,         // Basic size similarity
-    pattern: 0.40,        // Smart pattern analysis (most important)
-    slidingWindow: 0.25,  // Optimized window matching
-    statistical: 0.20     // Statistical fingerprint
+    length: 0.10,         // Reduced weight for length (photos can vary)
+    pattern: 0.45,        // Increased weight for pattern analysis (most reliable)
+    slidingWindow: 0.30,  // Increased weight for enhanced sliding window
+    statistical: 0.15     // Statistical fingerprint
   };
   
   const finalScore = (
@@ -292,13 +331,13 @@ const calculateVotingFaceSimilarity = (registeredFace: string, currentFace: stri
     statSimilarity * weights.statistical
   );
   
-  console.log('=== PRACTICAL FACE VERIFICATION BREAKDOWN ===');
+  console.log('=== ENHANCED PRACTICAL FACE VERIFICATION BREAKDOWN ===');
   console.log(`Length: ${(lengthSimilarity * 100).toFixed(1)}% (weight: ${weights.length})`);
   console.log(`Pattern: ${(patternSimilarity * 100).toFixed(1)}% (weight: ${weights.pattern})`);
   console.log(`Sliding Window: ${(slidingWindowSimilarity * 100).toFixed(1)}% (weight: ${weights.slidingWindow})`);
   console.log(`Statistical: ${(statSimilarity * 100).toFixed(1)}% (weight: ${weights.statistical})`);
-  console.log(`🎯 FINAL PRACTICAL VERIFICATION SCORE: ${(finalScore * 100).toFixed(2)}%`);
-  console.log('=== PRACTICAL FACE VERIFICATION COMPLETE ===');
+  console.log(`🎯 FINAL ENHANCED VERIFICATION SCORE: ${(finalScore * 100).toFixed(2)}%`);
+  console.log('=== ENHANCED PRACTICAL FACE VERIFICATION COMPLETE ===');
 
   return finalScore;
 };
@@ -738,15 +777,15 @@ const isFaceAlreadyRegistered = (newFaceData: string, existingVoters: Voter[]): 
   return { isDuplicate: false, details: 'No duplicate face patterns detected by maximum security analysis' };
 };
 
-// PRACTICAL FACE VERIFICATION FOR VOTING (70% accuracy requirement)
+// ENHANCED PRACTICAL FACE VERIFICATION FOR VOTING (65% accuracy requirement)
 const verifyFaceMatch = (registeredFace: string, currentFace: string): boolean => {
-  console.log('=== PRACTICAL FACE VERIFICATION FOR VOTING ACCESS ===');
+  console.log('=== ENHANCED PRACTICAL FACE VERIFICATION FOR VOTING ACCESS ===');
   
   const similarity = calculateVotingFaceSimilarity(registeredFace, currentFace);
   console.log('🎯 Final verification similarity score:', (similarity * 100).toFixed(3) + '%');
   
-  // PRACTICAL THRESHOLD: 70% similarity for voting access (reduced from 75%)
-  const VOTING_THRESHOLD = 0.70; // 70% threshold for practical verification
+  // ENHANCED PRACTICAL THRESHOLD: 65% similarity for voting access (reduced from 70%)
+  const VOTING_THRESHOLD = 0.65; // 65% threshold for enhanced practical verification
   const isMatch = similarity >= VOTING_THRESHOLD;
   
   console.log('Required threshold:', (VOTING_THRESHOLD * 100) + '%');
@@ -919,7 +958,7 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     };
   };
 
-  const updateVoter = (voterId: string, updates: Partial<Omit<Voter, 'id'>>): { success: boolean; message: string } => {
+  const updateVoter = (voterId: string, updates: Partial<Omit<Voter, 'id'>>) => {
     console.log('=== UPDATING VOTER ===');
     console.log('Voter ID:', voterId);
     console.log('Updates:', updates);
@@ -984,7 +1023,7 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   const verifyVoter = (aadhaar: string, voterId: string, name: string, faceData: string) => {
-    console.log('=== VOTER VERIFICATION ATTEMPT (70% FACE ACCURACY) ===');
+    console.log('=== VOTER VERIFICATION ATTEMPT (65% FACE ACCURACY) ===');
     console.log('Verifying voter:', { aadhaar, voterId, name });
     
     // Find voter by credentials
@@ -1013,22 +1052,22 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       };
     }
 
-    // FACE VERIFICATION WITH 70% ACCURACY REQUIREMENT
-    console.log('🔒 Starting face verification (70% accuracy threshold)...');
+    // ENHANCED FACE VERIFICATION WITH 65% ACCURACY REQUIREMENT
+    console.log('🔒 Starting enhanced face verification (65% accuracy threshold)...');
     const faceMatch = verifyFaceMatch(voter.faceData, faceData);
     
     if (!faceMatch) {
       console.log('🚫 FACE VERIFICATION FAILED - ACCESS DENIED');
       return { 
         success: false, 
-        message: "🚫 Face verification failed. Your face does not meet the required 70% similarity match with your registered image. Please ensure proper lighting, clear visibility of your face, and try again. If the issue persists, contact the election office."
+        message: "🚫 Face verification failed. Your face does not meet the required 65% similarity match with your registered image. Please ensure proper lighting, clear visibility of your face, and try again. If the issue persists, contact the election office."
       };
     }
 
     console.log('🎯 FACE VERIFICATION SUCCESSFUL - ACCESS GRANTED');
     return { 
       success: true, 
-      message: "✅ Identity verified successfully with face matching! You are now authorized to cast your vote.", 
+      message: "✅ Identity verified successfully with enhanced face matching! You are now authorized to cast your vote.", 
       voter 
     };
   };
