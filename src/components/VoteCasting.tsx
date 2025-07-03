@@ -19,6 +19,7 @@ const VoteCasting = () => {
   const [verifiedVoter, setVerifiedVoter] = useState(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [faceCapture, setFaceCapture] = useState<string | null>(null);
+  const [verificationStatus, setVerificationStatus] = useState<'idle' | 'verifying' | 'success' | 'failed'>('idle');
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -53,6 +54,8 @@ const VoteCasting = () => {
 
   const captureAndVerify = () => {
     if (videoRef.current) {
+      setVerificationStatus('verifying');
+      
       const canvas = document.createElement('canvas');
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
@@ -67,35 +70,48 @@ const VoteCasting = () => {
       stream?.getTracks().forEach(track => track.stop());
       setIsCapturing(false);
 
-      console.log('Attempting to verify voter...');
+      console.log('🔒 MANDATORY FACE VERIFICATION INITIATED');
       
-      // Verify voter with face matching
-      const result = verifyVoter(
-        loginData.aadhaarNumber,
-        loginData.voterId,
-        loginData.name,
-        imageData
-      );
+      // Add a small delay to show verification status
+      setTimeout(() => {
+        // Verify voter with face matching - MANDATORY CHECK
+        const result = verifyVoter(
+          loginData.aadhaarNumber,
+          loginData.voterId,
+          loginData.name,
+          imageData
+        );
 
-      if (result.success) {
-        setVerifiedVoter(result.voter);
-        setStep('vote');
-        toast({
-          title: "Verification Successful",
-          description: "Face verified successfully. You are eligible to vote.",
-        });
-      } else {
-        // Show specific error message for face mismatch or other issues
-        toast({
-          title: "Verification Failed",
-          description: result.message,
-          variant: "destructive",
-        });
-        // Reset to login for retry
-        setStep('login');
-        setLoginData({ name: '', aadhaarNumber: '', voterId: '' });
-        setFaceCapture(null);
-      }
+        if (result.success) {
+          setVerificationStatus('success');
+          console.log('✅ FACE VERIFICATION PASSED - VOTING ACCESS GRANTED');
+          
+          setTimeout(() => {
+            setVerifiedVoter(result.voter);
+            setStep('vote');
+            toast({
+              title: "✅ Face Verified Successfully",
+              description: "Identity confirmed. You are authorized to cast your vote.",
+            });
+          }, 1500);
+        } else {
+          setVerificationStatus('failed');
+          console.log('❌ FACE VERIFICATION FAILED - VOTING ACCESS DENIED');
+          
+          setTimeout(() => {
+            toast({
+              title: "❌ Face Verification Failed",
+              description: "Face does not match registered data. Please try again or contact Election Officer.",
+              variant: "destructive",
+            });
+            // Reset for retry
+            setVerificationStatus('idle');
+            setFaceCapture(null);
+            setStep('login');
+            setLoginData({ name: '', aadhaarNumber: '', voterId: '' });
+          }, 2000);
+        }
+      }, 1000);
     }
   };
 
@@ -120,6 +136,7 @@ const VoteCasting = () => {
     setLoginData({ name: '', aadhaarNumber: '', voterId: '' });
     setVerifiedVoter(null);
     setFaceCapture(null);
+    setVerificationStatus('idle');
   };
 
   if (step === 'success') {
@@ -201,30 +218,78 @@ const VoteCasting = () => {
             
             <p className="text-lg mb-6">Please capture your face for verification</p>
             
+            {/* Verification Status Display */}
+            {verificationStatus !== 'idle' && (
+              <div className="mb-6">
+                {verificationStatus === 'verifying' && (
+                  <div className="p-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg">
+                    <div className="flex items-center justify-center space-x-3">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-600"></div>
+                      <span className="text-yellow-800 font-semibold">🔒 Verifying Face Pattern...</span>
+                    </div>
+                  </div>
+                )}
+                
+                {verificationStatus === 'success' && (
+                  <div className="p-4 bg-green-50 border-2 border-green-500 rounded-lg">
+                    <div className="flex items-center justify-center space-x-3">
+                      <CheckCircle className="h-6 w-6 text-green-600" />
+                      <span className="text-green-800 font-semibold">✅ Face Verified Successfully!</span>
+                    </div>
+                  </div>
+                )}
+                
+                {verificationStatus === 'failed' && (
+                  <div className="p-4 bg-red-50 border-2 border-red-500 rounded-lg">
+                    <div className="flex items-center justify-center space-x-3">
+                      <div className="h-6 w-6 bg-red-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">✕</span>
+                      </div>
+                      <span className="text-red-800 font-semibold">❌ Face Does Not Match!</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
             {isCapturing ? (
               <div className="space-y-4">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  className="w-full max-w-md mx-auto rounded-lg border-4 border-purple-200"
-                />
+                <div className="relative">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    className={`w-full max-w-md mx-auto rounded-lg border-4 ${
+                      verificationStatus === 'success' ? 'border-green-500' :
+                      verificationStatus === 'failed' ? 'border-red-500' :
+                      'border-purple-200'
+                    }`}
+                  />
+                  {verificationStatus === 'verifying' && (
+                    <div className="absolute inset-0 bg-yellow-100 bg-opacity-50 flex items-center justify-center rounded-lg">
+                      <div className="bg-white p-3 rounded-full shadow-lg">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-600"></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <Button
                   onClick={captureAndVerify}
-                  className="bg-green-600 hover:bg-green-700"
+                  disabled={verificationStatus === 'verifying'}
+                  className="bg-green-600 hover:bg-green-700 disabled:opacity-50"
                 >
                   <Camera className="h-4 w-4 mr-2" />
-                  Capture & Verify Face
+                  {verificationStatus === 'verifying' ? 'Verifying...' : 'Capture & Verify Face'}
                 </Button>
               </div>
-            ) : (
+            ) : verificationStatus === 'idle' ? (
               <Button
                 onClick={startCamera}
                 className="bg-purple-600 hover:bg-purple-700"
               >
                 <Camera className="h-4 w-4 mr-2" />
-                Start Face Verification
+                Start Mandatory Face Verification
               </Button>
-            )}
+            ) : null}
           </CardContent>
         </Card>
       </div>
