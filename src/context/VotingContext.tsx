@@ -803,15 +803,15 @@ const isFaceAlreadyRegistered = (newFaceData: string, existingVoters: Voter[]): 
   return { isDuplicate: false, details: 'No duplicate face patterns detected by maximum security analysis' };
 };
 
-// STRICT FACE VERIFICATION FOR VOTING (85-90% accuracy requirement)
+// STRICT FACE VERIFICATION FOR VOTING (70-80% accuracy requirement)
 const verifyFaceMatch = (registeredFace: string, currentFace: string): boolean => {
-  console.log('=== STRICT FACE VERIFICATION FOR VOTING (85-90% REQUIREMENT) ===');
+  console.log('=== FACE VERIFICATION FOR VOTING (70-80% REQUIREMENT) ===');
   
   const similarity = calculateVotingFaceSimilarity(registeredFace, currentFace);
   console.log('🎯 Final verification similarity score:', (similarity * 100).toFixed(3) + '%');
   
-  // STRICT THRESHOLD: 85% minimum similarity for voting access
-  const VOTING_THRESHOLD = 0.85; // 85% minimum accuracy as requested
+  // ADJUSTED THRESHOLD: 75% similarity for voting access (70-80% range)
+  const VOTING_THRESHOLD = 0.75; // Changed from 0.85 to 0.75 (75% - middle of 70-80% range)
   const isMatch = similarity >= VOTING_THRESHOLD;
   
   console.log('Required threshold:', (VOTING_THRESHOLD * 100) + '%');
@@ -1049,7 +1049,7 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   const verifyVoter = (aadhaar: string, voterId: string, name: string, faceData: string) => {
-    console.log('=== STRICT VOTER VERIFICATION ATTEMPT (85-90% FACE ACCURACY) ===');
+    console.log('=== VOTER VERIFICATION ATTEMPT (70-80% FACE ACCURACY) ===');
     console.log('Verifying voter:', { aadhaar, voterId, name });
     
     // Find voter by credentials
@@ -1078,22 +1078,22 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       };
     }
 
-    // STRICT FACE VERIFICATION WITH 85-90% ACCURACY REQUIREMENT
-    console.log('🔒 Starting STRICT face verification (85% minimum accuracy)...');
+    // FACE VERIFICATION WITH 70-80% ACCURACY REQUIREMENT
+    console.log('🔒 Starting face verification (75% accuracy threshold)...');
     const faceMatch = verifyFaceMatch(voter.faceData, faceData);
     
     if (!faceMatch) {
       console.log('🚫 FACE VERIFICATION FAILED - ACCESS DENIED');
       return { 
         success: false, 
-        message: "🚫 Face verification failed. Your face does not meet the required 85% similarity match with your registered image. Please ensure proper lighting, clear visibility of your face, and try again. If the issue persists, contact the election office."
+        message: "🚫 Face verification failed. Your face does not meet the required 75% similarity match with your registered image. Please ensure proper lighting, clear visibility of your face, and try again. If the issue persists, contact the election office."
       };
     }
 
     console.log('🎯 FACE VERIFICATION SUCCESSFUL - ACCESS GRANTED');
     return { 
       success: true, 
-      message: "✅ Identity verified successfully with high-precision face matching! You are now authorized to cast your vote.", 
+      message: "✅ Identity verified successfully with face matching! You are now authorized to cast your vote.", 
       voter 
     };
   };
