@@ -1,4 +1,3 @@
-
 import { validateFaceImageQuality } from './validation';
 
 // ENHANCED PRACTICAL FACE MATCHING FOR VOTING VERIFICATION - OPTIMIZED FOR REAL-WORLD USE
@@ -213,7 +212,7 @@ export const calculateVotingFaceSimilarity = (registeredFace: string, currentFac
   return finalScore;
 };
 
-// IMPROVED MAXIMUM SECURITY DUPLICATE DETECTION
+// IMPROVED MAXIMUM SECURITY DUPLICATE DETECTION - Enhanced for stricter matching
 export const calculateMaximumSecurityFaceSimilarity = (face1: string, face2: string): number => {
   console.log('=== MAXIMUM SECURITY FACE SIMILARITY ANALYSIS ===');
   
@@ -237,15 +236,20 @@ export const calculateMaximumSecurityFaceSimilarity = (face1: string, face2: str
 
   console.log(`Comparing faces - Length1: ${data1.length}, Length2: ${data2.length}`);
 
-  // 1. REAL Length Analysis with stricter thresholds
+  // 1. ENHANCED Length Analysis - More sensitive to same-source images
   const lengthDiff = Math.abs(data1.length - data2.length);
   const avgLength = (data1.length + data2.length) / 2;
   const lengthVariation = lengthDiff / avgLength;
-  const lengthSimilarity = Math.max(0, 1 - lengthVariation * 2); // More sensitive to length differences
   
-  console.log(`Length variation: ${(lengthVariation * 100).toFixed(2)}%`);
+  // Boost similarity for very small length differences (likely same camera/source)
+  let lengthSimilarity = Math.max(0, 1 - lengthVariation * 1.5);
+  if (lengthVariation < 0.02) { // Less than 2% difference
+    lengthSimilarity = 0.95; // High similarity for near-identical sizes
+  }
+  
+  console.log(`Length variation: ${(lengthVariation * 100).toFixed(2)}%, Similarity: ${(lengthSimilarity * 100).toFixed(2)}%`);
 
-  // 2. ADVANCED Frequency Analysis
+  // 2. ENHANCED Frequency Analysis with pattern boosting
   const analyzeFrequency = (data: string) => {
     const freq: { [key: string]: number } = {};
     for (let i = 0; i < data.length; i++) {
@@ -270,19 +274,33 @@ export const calculateMaximumSecurityFaceSimilarity = (face1: string, face2: str
   }
 
   frequencySimilarity /= allChars.size;
-  console.log(`Frequency similarity: ${(frequencySimilarity * 100).toFixed(2)}%`);
+  
+  // Boost frequency similarity if it's already high (likely same person)
+  if (frequencySimilarity > 0.85) {
+    frequencySimilarity = Math.min(0.98, frequencySimilarity * 1.1);
+  }
+  
+  console.log(`Enhanced frequency similarity: ${(frequencySimilarity * 100).toFixed(2)}%`);
 
-  // 3. IMPROVED Pattern Matching with Multiple Window Sizes
-  const improvedSlidingWindow = () => {
+  // 3. ULTRA-SENSITIVE Pattern Matching
+  const ultraSensitiveSlidingWindow = () => {
     let totalScore = 0;
     let measurements = 0;
+    let bestScore = 0;
     
-    // Test multiple window sizes for comprehensive analysis
-    const windowSizes = [100, 150, 200, 250];
+    // Multiple window sizes with different strategies
+    const strategies = [
+      { windowSize: 80, stride: 60, weight: 1.0 },   // Small windows, high overlap
+      { windowSize: 120, stride: 80, weight: 1.2 },  // Medium windows
+      { windowSize: 200, stride: 120, weight: 1.5 }, // Large windows, highest weight
+      { windowSize: 300, stride: 200, weight: 1.3 }  // Very large windows
+    ];
     
-    for (const windowSize of windowSizes) {
-      const stride = Math.floor(windowSize * 0.75);
+    for (const strategy of strategies) {
+      const { windowSize, stride, weight } = strategy;
       const maxLength = Math.min(data1.length, data2.length);
+      
+      if (maxLength < windowSize) continue;
       
       for (let i = 0; i < maxLength - windowSize; i += stride) {
         const window1 = data1.substring(i, i + windowSize);
@@ -290,33 +308,41 @@ export const calculateMaximumSecurityFaceSimilarity = (face1: string, face2: str
 
         let exactMatches = 0;
         let similarMatches = 0;
+        let nearMatches = 0;
         
         for (let j = 0; j < windowSize; j++) {
           if (window1[j] === window2[j]) {
             exactMatches++;
           } else {
-            // Check for similar characters
             const code1 = window1[j]?.charCodeAt(0) || 0;
             const code2 = window2[j]?.charCodeAt(0) || 0;
-            if (Math.abs(code1 - code2) <= 1) {
+            const diff = Math.abs(code1 - code2);
+            
+            if (diff <= 1) {
               similarMatches++;
+            } else if (diff <= 3) {
+              nearMatches++;
             }
           }
         }
 
-        const windowScore = (exactMatches + similarMatches * 0.3) / windowSize;
-        totalScore += windowScore;
+        const windowScore = (exactMatches + similarMatches * 0.7 + nearMatches * 0.3) / windowSize;
+        const weightedScore = windowScore * weight;
+        
+        totalScore += weightedScore;
+        bestScore = Math.max(bestScore, windowScore);
         measurements++;
       }
     }
 
-    return measurements > 0 ? totalScore / measurements : 0;
+    const avgScore = measurements > 0 ? totalScore / measurements : 0;
+    return Math.min(0.99, avgScore * 0.6 + bestScore * 0.4); // Weighted combination
   };
 
-  const slidingWindowScore = improvedSlidingWindow();
-  console.log(`Improved sliding window score: ${(slidingWindowScore * 100).toFixed(2)}%`);
+  const slidingWindowScore = ultraSensitiveSlidingWindow();
+  console.log(`Ultra-sensitive sliding window score: ${(slidingWindowScore * 100).toFixed(2)}%`);
 
-  // 4. ENHANCED ENTROPY Analysis
+  // 4. ENHANCED ENTROPY Analysis with similarity boosting
   const calculateEntropy = (data: string): number => {
     const freq: { [key: string]: number } = {};
     for (let i = 0; i < data.length; i++) {
@@ -334,17 +360,23 @@ export const calculateMaximumSecurityFaceSimilarity = (face1: string, face2: str
 
   const entropy1 = calculateEntropy(data1);
   const entropy2 = calculateEntropy(data2);
-  const entropySimilarity = 1 - Math.abs(entropy1 - entropy2) / Math.max(entropy1, entropy2);
+  let entropySimilarity = 1 - Math.abs(entropy1 - entropy2) / Math.max(entropy1, entropy2);
+  
+  // Boost entropy similarity if it's very high (same source characteristics)
+  if (entropySimilarity > 0.95) {
+    entropySimilarity = Math.min(0.99, entropySimilarity * 1.05);
+  }
 
-  console.log(`Entropy similarity: ${(entropySimilarity * 100).toFixed(2)}%`);
+  console.log(`Enhanced entropy similarity: ${(entropySimilarity * 100).toFixed(2)}%`);
 
-  // 5. HASH-BASED Similarity for Better Detection
-  const calculateHashSimilarity = () => {
-    // Create multiple hash segments for comparison
-    const segments = 8;
+  // 5. ENHANCED MULTI-LEVEL Hash-Based Similarity
+  const calculateEnhancedHashSimilarity = () => {
+    const segments = 12; // Increased segments for finer analysis
     const segmentSize = Math.floor(Math.min(data1.length, data2.length) / segments);
     
     let hashSimilarity = 0;
+    let consecutiveMatches = 0;
+    let maxConsecutive = 0;
     
     for (let i = 0; i < segments; i++) {
       const start = i * segmentSize;
@@ -353,7 +385,6 @@ export const calculateMaximumSecurityFaceSimilarity = (face1: string, face2: str
       const segment1 = data1.substring(start, end);
       const segment2 = data2.substring(start, end);
       
-      // Simple hash comparison
       let segmentMatches = 0;
       const checkSize = Math.min(segment1.length, segment2.length);
       
@@ -363,22 +394,35 @@ export const calculateMaximumSecurityFaceSimilarity = (face1: string, face2: str
         }
       }
       
-      hashSimilarity += segmentMatches / checkSize;
+      const segmentScore = segmentMatches / checkSize;
+      hashSimilarity += segmentScore;
+      
+      // Track consecutive high-scoring segments
+      if (segmentScore > 0.6) {
+        consecutiveMatches++;
+        maxConsecutive = Math.max(maxConsecutive, consecutiveMatches);
+      } else {
+        consecutiveMatches = 0;
+      }
     }
     
-    return hashSimilarity / segments;
+    const baseScore = hashSimilarity / segments;
+    // Boost score if there are long consecutive matches (pattern consistency)
+    const consecutiveBonus = maxConsecutive > 3 ? 0.1 * (maxConsecutive / segments) : 0;
+    
+    return Math.min(0.99, baseScore + consecutiveBonus);
   };
   
-  const hashSimilarity = calculateHashSimilarity();
-  console.log(`Hash-based similarity: ${(hashSimilarity * 100).toFixed(2)}%`);
+  const hashSimilarity = calculateEnhancedHashSimilarity();
+  console.log(`Enhanced multi-level hash similarity: ${(hashSimilarity * 100).toFixed(2)}%`);
 
-  // IMPROVED COMPOSITE SCORING - More accurate weights
+  // ENHANCED COMPOSITE SCORING - Tuned for duplicate detection
   const weights = {
-    length: 0.15,         // Increased importance of length similarity
-    frequency: 0.25,      // High importance for frequency analysis
-    slidingWindow: 0.30,  // Highest weight for pattern matching
+    length: 0.20,         // Increased importance of length similarity
+    frequency: 0.30,      // High importance for frequency analysis
+    slidingWindow: 0.25,  // Pattern matching remains important
     entropy: 0.15,        // Entropy analysis
-    hash: 0.15           // Hash-based comparison
+    hash: 0.10           // Hash-based comparison
   };
 
   const finalScore = (
@@ -389,14 +433,14 @@ export const calculateMaximumSecurityFaceSimilarity = (face1: string, face2: str
     hashSimilarity * weights.hash
   );
 
-  console.log('=== IMPROVED MAXIMUM SECURITY FACE SIMILARITY BREAKDOWN ===');
+  console.log('=== ENHANCED MAXIMUM SECURITY FACE SIMILARITY BREAKDOWN ===');
   console.log(`Length Similarity: ${(lengthSimilarity * 100).toFixed(1)}% (weight: ${weights.length})`);
   console.log(`Frequency Similarity: ${(frequencySimilarity * 100).toFixed(1)}% (weight: ${weights.frequency})`);
   console.log(`Sliding Window Score: ${(slidingWindowScore * 100).toFixed(1)}% (weight: ${weights.slidingWindow})`);
   console.log(`Entropy Similarity: ${(entropySimilarity * 100).toFixed(1)}% (weight: ${weights.entropy})`);
   console.log(`Hash-Based Similarity: ${(hashSimilarity * 100).toFixed(1)}% (weight: ${weights.hash})`);
-  console.log(`🎯 FINAL IMPROVED SECURITY SCORE: ${(finalScore * 100).toFixed(2)}%`);
-  console.log('=== IMPROVED MAXIMUM SECURITY FACE SIMILARITY ANALYSIS COMPLETE ===');
+  console.log(`🎯 FINAL ENHANCED SECURITY SCORE: ${(finalScore * 100).toFixed(2)}%`);
+  console.log('=== ENHANCED MAXIMUM SECURITY FACE SIMILARITY ANALYSIS COMPLETE ===');
   
   return finalScore;
 };
