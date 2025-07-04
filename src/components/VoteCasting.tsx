@@ -1,12 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { Vote, Camera, CheckCircle, AlertCircle } from 'lucide-react';
+import { Vote, Camera, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useVoting } from '../context/VotingContext';
-import ManualVerificationModal from './ManualVerificationModal';
 
 const VoteCasting = () => {
   const { verifyVoter, castVote, candidates } = useVoting();
@@ -21,9 +20,6 @@ const VoteCasting = () => {
   const [isCapturing, setIsCapturing] = useState(false);
   const [faceCapture, setFaceCapture] = useState<string | null>(null);
   const [verificationStatus, setVerificationStatus] = useState<'idle' | 'verifying' | 'success' | 'failed'>('idle');
-  const [verificationAttempts, setVerificationAttempts] = useState(0);
-  const [showManualModal, setShowManualModal] = useState(false);
-  const [faceDistance, setFaceDistance] = useState<number | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -42,22 +38,14 @@ const VoteCasting = () => {
   const startCamera = async () => {
     try {
       setIsCapturing(true);
-      setVerificationStatus('idle');
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-          facingMode: 'user'
-        } 
-      });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
     } catch (error) {
-      console.error('Camera access failed:', error);
       toast({
         title: "Camera Error",
-        description: "Unable to access camera. Please check permissions and try again.",
+        description: "Unable to access camera. Please check permissions.",
         variant: "destructive",
       });
       setIsCapturing(false);
@@ -67,23 +55,26 @@ const VoteCasting = () => {
   const captureAndVerify = () => {
     if (videoRef.current) {
       setVerificationStatus('verifying');
-      setVerificationAttempts(prev => prev + 1);
       
       const canvas = document.createElement('canvas');
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
       const ctx = canvas.getContext('2d');
       ctx?.drawImage(videoRef.current, 0, 0);
-      const imageData = canvas.toDataURL('image/jpeg', 0.8);
+      const imageData = canvas.toDataURL('image/jpeg');
       
       setFaceCapture(imageData);
 
-      console.log('🔒 STRICT FACE VERIFICATION INITIATED');
-      console.log('Verification attempt:', verificationAttempts + 1);
+      // Stop camera
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream?.getTracks().forEach(track => track.stop());
+      setIsCapturing(false);
+
+      console.log('🔒 MANDATORY FACE VERIFICATION INITIATED');
       
-      // Add delay to show verification status
+      // Add a small delay to show verification status
       setTimeout(() => {
-        // Perform STRICT face verification with enhanced debugging
+        // Verify voter with face matching - MANDATORY CHECK
         const result = verifyVoter(
           loginData.aadhaarNumber,
           loginData.voterId,
@@ -91,69 +82,36 @@ const VoteCasting = () => {
           imageData
         );
 
-        // Extract real face distance from verification result
-        const realDistance = result.faceMetrics?.distance || (result.success ? Math.random() * 0.3 : (0.6 + Math.random() * 0.4));
-        setFaceDistance(realDistance);
-        
-        console.log(`📊 ENHANCED MODE - Face Distance: ${realDistance.toFixed(4)} (threshold: 0.4)`);
-        console.log(`🎯 Match Quality: ${result.success ? '✅ VERIFIED' : '❌ INSUFFICIENT'}`);
-        
-        if (result.faceMetrics) {
-          console.log(`📈 Detailed Metrics - Similarity: ${(result.faceMetrics.similarity * 100).toFixed(2)}%`);
-        }
-
         if (result.success) {
           setVerificationStatus('success');
-          console.log('✅ ENHANCED FACE VERIFICATION SUCCESS - VOTING ACCESS GRANTED');
-          
-          // Stop camera after successful verification
-          const stream = videoRef.current?.srcObject as MediaStream;
-          stream?.getTracks().forEach(track => track.stop());
-          setIsCapturing(false);
+          console.log('✅ FACE VERIFICATION PASSED - VOTING ACCESS GRANTED');
           
           setTimeout(() => {
             setVerifiedVoter(result.voter);
             setStep('vote');
             toast({
-              title: "✅ Face Verification Successful",
-              description: `Identity confirmed with high confidence (distance: ${realDistance.toFixed(3)}). You are authorized to cast your vote.`,
+              title: "✅ Face Verified Successfully",
+              description: "Identity confirmed. You are authorized to cast your vote.",
             });
-          }, 2000);
+          }, 1500);
         } else {
           setVerificationStatus('failed');
-          console.log('❌ ENHANCED FACE VERIFICATION FAILED - VOTING ACCESS DENIED');
-          console.log('Failure reason:', result.message);
+          console.log('❌ FACE VERIFICATION FAILED - VOTING ACCESS DENIED');
           
           setTimeout(() => {
-            const attemptsLeft = 3 - verificationAttempts;
-            
-            if (verificationAttempts >= 3) {
-              // Show manual verification modal after 3 failed attempts
-              const stream = videoRef.current?.srcObject as MediaStream;
-              stream?.getTracks().forEach(track => track.stop());
-              setIsCapturing(false);
-              setVerificationStatus('idle');
-              setFaceCapture(null);
-              setShowManualModal(true);
-              
-              toast({
-                title: "❌ Maximum Attempts Reached",
-                description: "Face verification failed 3 times. Manual verification required.",
-                variant: "destructive",
-              });
-            } else {
-              toast({
-                title: "❌ Face Verification Failed",
-                description: `${result.message || `Face does not match (distance: ${realDistance.toFixed(3)}).`} ${attemptsLeft} attempts remaining.`,
-                variant: "destructive",
-              });
-              
-              setVerificationStatus('idle');
-              setFaceCapture(null);
-            }
-          }, 3000);
+            toast({
+              title: "❌ Face Verification Failed",
+              description: "Face does not match registered data. Please try again or contact Election Officer.",
+              variant: "destructive",
+            });
+            // Reset for retry
+            setVerificationStatus('idle');
+            setFaceCapture(null);
+            setStep('login');
+            setLoginData({ name: '', aadhaarNumber: '', voterId: '' });
+          }, 2000);
         }
-      }, 1500);
+      }, 1000);
     }
   };
 
@@ -179,18 +137,6 @@ const VoteCasting = () => {
     setVerifiedVoter(null);
     setFaceCapture(null);
     setVerificationStatus('idle');
-    setVerificationAttempts(0);
-    setFaceDistance(null);
-    setShowManualModal(false);
-  };
-
-  const handleManualModalClose = () => {
-    setShowManualModal(false);
-    // Reset to login after manual verification modal is closed
-    setStep('login');
-    setLoginData({ name: '', aadhaarNumber: '', voterId: '' });
-    setVerificationAttempts(0);
-    setFaceDistance(null);
   };
 
   if (step === 'success') {
@@ -259,74 +205,48 @@ const VoteCasting = () => {
           <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
             <CardTitle className="flex items-center space-x-2 text-2xl">
               <Camera className="h-6 w-6" />
-              <span>Strict Face Verification</span>
+              <span>Face Verification</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="p-8 text-center">
             <div className="mb-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
               <p className="text-purple-800 text-sm">
-                <strong>Enhanced Security:</strong> Your face will be verified with high precision against your registered image. 
-                Please ensure your face is clearly visible, well-lit, and you are looking directly at the camera.
+                <strong>Important:</strong> Your face will be compared with the image captured during registration. 
+                Please ensure your face is clearly visible and well-lit for accurate verification.
               </p>
             </div>
             
-            <p className="text-lg mb-4">Strict biometric verification required</p>
+            <p className="text-lg mb-6">Please capture your face for verification</p>
             
-            {verificationAttempts > 0 && (
-              <div className="text-sm text-gray-600 mb-4 space-y-2">
-                <p>Verification attempts: {verificationAttempts}/3</p>
-                {faceDistance !== null && (
-                  <div className="text-xs font-mono bg-gray-100 p-3 rounded space-y-1">
-                    <p className="font-semibold">📊 Live Face Metrics:</p>
-                    <p>• Distance: <span className={faceDistance < 0.4 ? "text-green-600" : "text-red-600"}>{faceDistance.toFixed(4)}</span> (threshold: 0.4)</p>
-                    <p>• Status: {faceDistance < 0.4 ? <span className="text-green-600">✅ Within range</span> : <span className="text-red-600">❌ Too far from match</span>}</p>
-                    <p className="text-xs text-gray-500 mt-1">💡 Distance should be under 0.4 for match</p>
-                  </div>
-                )}
-              </div>
-            )}
-            
-            {/* Enhanced Verification Status Display */}
+            {/* Verification Status Display */}
             {verificationStatus !== 'idle' && (
               <div className="mb-6">
                 {verificationStatus === 'verifying' && (
-                  <div className="p-6 bg-yellow-50 border-4 border-yellow-400 rounded-lg">
-                    <div className="flex items-center justify-center space-x-3 mb-3">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-600"></div>
-                      <span className="text-yellow-800 font-bold text-lg">🔒 Analyzing Face Pattern...</span>
-                    </div>
-                    <div className="text-yellow-700 text-sm">
-                      Performing strict biometric comparison with registered data
+                  <div className="p-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg">
+                    <div className="flex items-center justify-center space-x-3">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-600"></div>
+                      <span className="text-yellow-800 font-semibold">🔒 Verifying Face Pattern...</span>
                     </div>
                   </div>
                 )}
                 
                 {verificationStatus === 'success' && (
-                  <div className="p-6 bg-green-50 border-4 border-green-500 rounded-lg">
-                    <div className="flex items-center justify-center space-x-3 mb-3">
-                      <CheckCircle className="h-8 w-8 text-green-600" />
-                      <span className="text-green-800 font-bold text-lg">✅ Face Match Confirmed!</span>
-                    </div>
-                    <div className="text-green-700 text-sm">
-                      High confidence match with registered biometric data
+                  <div className="p-4 bg-green-50 border-2 border-green-500 rounded-lg">
+                    <div className="flex items-center justify-center space-x-3">
+                      <CheckCircle className="h-6 w-6 text-green-600" />
+                      <span className="text-green-800 font-semibold">✅ Face Verified Successfully!</span>
                     </div>
                   </div>
                 )}
                 
                 {verificationStatus === 'failed' && (
-                  <div className="p-6 bg-red-50 border-4 border-red-500 rounded-lg">
-                    <div className="flex items-center justify-center space-x-3 mb-3">
-                      <AlertCircle className="h-8 w-8 text-red-600" />
-                      <span className="text-red-800 font-bold text-lg">❌ Face Does Not Match!</span>
-                    </div>
-                    <div className="text-red-700 text-sm">
-                      Insufficient similarity with registered biometric data
-                    </div>
-                    {verificationAttempts >= 3 && (
-                      <div className="mt-2 text-red-800 font-semibold text-sm">
-                        Maximum attempts reached. Please contact Election Officer.
+                  <div className="p-4 bg-red-50 border-2 border-red-500 rounded-lg">
+                    <div className="flex items-center justify-center space-x-3">
+                      <div className="h-6 w-6 bg-red-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">✕</span>
                       </div>
-                    )}
+                      <span className="text-red-800 font-semibold">❌ Face Does Not Match!</span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -339,43 +259,26 @@ const VoteCasting = () => {
                     ref={videoRef}
                     autoPlay
                     className={`w-full max-w-md mx-auto rounded-lg border-4 ${
-                      verificationStatus === 'success' ? 'border-green-500 shadow-green-200 shadow-lg' :
-                      verificationStatus === 'failed' ? 'border-red-500 shadow-red-200 shadow-lg' :
-                      verificationStatus === 'verifying' ? 'border-yellow-500 shadow-yellow-200 shadow-lg' :
-                      'border-purple-300'
+                      verificationStatus === 'success' ? 'border-green-500' :
+                      verificationStatus === 'failed' ? 'border-red-500' :
+                      'border-purple-200'
                     }`}
                   />
                   {verificationStatus === 'verifying' && (
-                    <div className="absolute inset-0 bg-yellow-100 bg-opacity-40 flex items-center justify-center rounded-lg">
-                      <div className="bg-white p-4 rounded-full shadow-lg border-2 border-yellow-400">
-                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-yellow-600"></div>
-                      </div>
-                    </div>
-                  )}
-                  {verificationStatus === 'success' && (
-                    <div className="absolute inset-0 bg-green-100 bg-opacity-40 flex items-center justify-center rounded-lg">
-                      <div className="bg-white p-4 rounded-full shadow-lg border-2 border-green-500">
-                        <CheckCircle className="h-10 w-10 text-green-600" />
-                      </div>
-                    </div>
-                  )}
-                  {verificationStatus === 'failed' && (
-                    <div className="absolute inset-0 bg-red-100 bg-opacity-40 flex items-center justify-center rounded-lg">
-                      <div className="bg-white p-4 rounded-full shadow-lg border-2 border-red-500">
-                        <AlertCircle className="h-10 w-10 text-red-600" />
+                    <div className="absolute inset-0 bg-yellow-100 bg-opacity-50 flex items-center justify-center rounded-lg">
+                      <div className="bg-white p-3 rounded-full shadow-lg">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-600"></div>
                       </div>
                     </div>
                   )}
                 </div>
                 <Button
                   onClick={captureAndVerify}
-                  disabled={verificationStatus === 'verifying' || verificationStatus === 'success'}
+                  disabled={verificationStatus === 'verifying'}
                   className="bg-green-600 hover:bg-green-700 disabled:opacity-50"
                 >
                   <Camera className="h-4 w-4 mr-2" />
-                  {verificationStatus === 'verifying' ? 'Verifying Face...' : 
-                   verificationStatus === 'success' ? 'Verification Complete' :
-                   'Capture & Verify Face'}
+                  {verificationStatus === 'verifying' ? 'Verifying...' : 'Capture & Verify Face'}
                 </Button>
               </div>
             ) : verificationStatus === 'idle' ? (
@@ -384,52 +287,14 @@ const VoteCasting = () => {
                 className="bg-purple-600 hover:bg-purple-700"
               >
                 <Camera className="h-4 w-4 mr-2" />
-                Start Strict Face Verification
+                Start Mandatory Face Verification
               </Button>
-            ) : verificationStatus === 'failed' && verificationAttempts < 3 ? (
-              <div className="space-y-3">
-                <Button
-                  onClick={startCamera}
-                  className="bg-purple-600 hover:bg-purple-700"
-                >
-                  <Camera className="h-4 w-4 mr-2" />
-                  Try Again ({3 - verificationAttempts} attempts left)
-                </Button>
-                {verificationAttempts >= 2 && (
-                  <p className="text-sm text-orange-600 font-medium">
-                    ⚠️ One more attempt before manual verification is required
-                  </p>
-                )}
-              </div>
-            ) : verificationStatus === 'failed' && verificationAttempts >= 3 ? (
-              <div className="text-center space-y-4">
-                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-red-800 font-medium">Maximum attempts reached</p>
-                  <p className="text-red-600 text-sm mt-1">Manual verification required</p>
-                </div>
-                <Button
-                  onClick={() => setShowManualModal(true)}
-                  className="bg-orange-600 hover:bg-orange-700"
-                >
-                  Request Manual Verification
-                </Button>
-              </div>
             ) : null}
-        </CardContent>
-      </Card>
-      
-      <ManualVerificationModal
-        isOpen={showManualModal}
-        onClose={handleManualModalClose}
-        voterData={{
-          name: loginData.name,
-          aadhaarNumber: loginData.aadhaarNumber,
-          voterId: loginData.voterId,
-        }}
-      />
-    </div>
-  );
-}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-md mx-auto">

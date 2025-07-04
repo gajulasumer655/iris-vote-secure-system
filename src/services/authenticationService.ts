@@ -72,24 +72,21 @@ export const verifyVoterService = (
     };
   }
   
-  // Perform enhanced face matching with detailed metrics
-  const faceVerificationResult = verifyFaceMatch(voter.faceData, faceData);
+  // Perform enhanced face matching
+  const faceMatch = verifyFaceMatch(voter.faceData, faceData);
   
-  if (!faceVerificationResult.isMatch) {
+  if (!faceMatch) {
     console.log('🚫 BIOMETRIC VERIFICATION FAILED - ACCESS DENIED');
     
     // Log security audit entry for failed face verification
     console.log('🚨 SECURITY AUDIT: Face verification failed');
     console.log('Voter:', voter.name);
     console.log('Aadhaar:', aadhaar.substring(0, 4) + '********');
-    console.log('Face Distance:', faceVerificationResult.distance.toFixed(4));
-    console.log('Similarity:', (faceVerificationResult.similarity * 100).toFixed(2) + '%');
     console.log('Timestamp:', new Date().toISOString());
     
     return { 
       success: false, 
-      message: `Verification Failed: Face does not match (distance: ${faceVerificationResult.distance.toFixed(3)}). Please ensure proper lighting and face alignment.`,
-      faceMetrics: faceVerificationResult
+      message: "Verification Failed: Voter authentication data mismatch. Please contact the Election Officer."
     };
   }
 
@@ -128,7 +125,6 @@ export const verifyVoterService = (
   return { 
     success: true, 
     message: "Authentication successful. You are authorized to cast your vote.", 
-    voter,
-    faceMetrics: faceVerificationResult
+    voter 
   };
 };
