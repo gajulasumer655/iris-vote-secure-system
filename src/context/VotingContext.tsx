@@ -16,8 +16,10 @@ export const useVoting = () => {
 export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [voters, setVoters] = useState<Voter[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([
-    { id: '1', name: 'John Smith', party: 'Democratic Party', symbol: '🔵', voteCount: 0 },
-    { id: '2', name: 'Sarah Johnson', party: 'Republican Party', symbol: '🔴', voteCount: 0 },
+    { id: '1', name: 'Narendra Modi', party: 'BJP', symbol: '🪷', voteCount: 0 },
+    { id: '2', name: 'Rahul Gandhi', party: 'Congress', symbol: '🤚', voteCount: 0 },
+    { id: '3', name: 'K. Chandrashekar Rao (KCR)', party: 'BRS', symbol: '🚗', voteCount: 0 },
+    { id: '4', name: 'NOTA', party: 'None of the Above', symbol: '🚫', voteCount: 0 },
   ]);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
 
@@ -186,7 +188,7 @@ export const VotingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   const authenticateAdmin = (username: string, password: string) => {
-    if ((username === 'vamshi' || username === 'sumer') && password === 'admin123') {
+    if ((username === 'vamshi' && password === 'vamshi') || (username === 'sumer' && password === 'sumer')) {
       setIsAdminAuthenticated(true);
       return true;
     }

@@ -17,9 +17,11 @@ const Results = () => {
   const totalVoters = voters.length;
   const voterTurnout = totalVoters > 0 ? (totalVotes / totalVoters) * 100 : 0;
   
-  const winner = candidates.reduce((prev, current) => 
-    (prev.voteCount > current.voteCount) ? prev : current
-  );
+  // Check for ties
+  const maxVotes = Math.max(...candidates.map(c => c.voteCount));
+  const winners = candidates.filter(c => c.voteCount === maxVotes);
+  const isTie = winners.length > 1 && maxVotes > 0;
+  const winner = winners[0];
 
   const sortedCandidates = [...candidates].sort((a, b) => b.voteCount - a.voteCount);
 
@@ -159,7 +161,7 @@ const Results = () => {
           <CardHeader className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white">
             <CardTitle className="flex items-center space-x-2 text-2xl">
               <Trophy className="h-6 w-6" />
-              <span>Winner: {winner.name}</span>
+              <span>{isTie ? `It's a tie between candidates` : `Winner: ${winner.name}`}</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
