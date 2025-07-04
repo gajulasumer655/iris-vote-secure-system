@@ -1,3 +1,4 @@
+
 import { Voter } from '../types/voting';
 import { calculateMaximumSecurityFaceSimilarity } from './faceVerification';
 
@@ -16,7 +17,7 @@ export const isFaceAlreadyRegistered = (faceData: string, voters: Voter[]) => {
     console.log(`Similarity with ${existingVoter.name}: ${(similarity * 100).toFixed(2)}%`);
     
     // ULTRA-STRICT threshold for duplicate detection during registration
-    const MAXIMUM_SECURITY_THRESHOLD = 0.75; // 75% similarity = DUPLICATE for registration
+    const MAXIMUM_SECURITY_THRESHOLD = 0.60; // Lowered from 75% to 60% for stricter detection
     
     if (similarity >= MAXIMUM_SECURITY_THRESHOLD) {
       console.log(`🚨 DUPLICATE FACE DETECTED! Similarity: ${(similarity * 100).toFixed(2)}% >= ${(MAXIMUM_SECURITY_THRESHOLD * 100)}%`);

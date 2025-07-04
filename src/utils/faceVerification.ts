@@ -1,3 +1,4 @@
+
 import { validateFaceImageQuality } from './validation';
 
 // ENHANCED PRACTICAL FACE MATCHING FOR VOTING VERIFICATION - OPTIMIZED FOR REAL-WORLD USE
@@ -212,7 +213,7 @@ export const calculateVotingFaceSimilarity = (registeredFace: string, currentFac
   return finalScore;
 };
 
-// MAXIMUM SECURITY DUPLICATE DETECTION WITH ULTRA-ADVANCED ALGORITHMS
+// IMPROVED MAXIMUM SECURITY DUPLICATE DETECTION
 export const calculateMaximumSecurityFaceSimilarity = (face1: string, face2: string): number => {
   console.log('=== MAXIMUM SECURITY FACE SIMILARITY ANALYSIS ===');
   
@@ -236,10 +237,11 @@ export const calculateMaximumSecurityFaceSimilarity = (face1: string, face2: str
 
   console.log(`Comparing faces - Length1: ${data1.length}, Length2: ${data2.length}`);
 
-  // 1. ENHANCED Length Analysis with stricter thresholds
+  // 1. REAL Length Analysis with stricter thresholds
   const lengthDiff = Math.abs(data1.length - data2.length);
   const avgLength = (data1.length + data2.length) / 2;
   const lengthVariation = lengthDiff / avgLength;
+  const lengthSimilarity = Math.max(0, 1 - lengthVariation * 2); // More sensitive to length differences
   
   console.log(`Length variation: ${(lengthVariation * 100).toFixed(2)}%`);
 
@@ -270,38 +272,51 @@ export const calculateMaximumSecurityFaceSimilarity = (face1: string, face2: str
   frequencySimilarity /= allChars.size;
   console.log(`Frequency similarity: ${(frequencySimilarity * 100).toFixed(2)}%`);
 
-  // 3. COMPLEX Pattern Matching with Sliding Window
-  const complexSlidingWindow = () => {
-    const windowSize = 200;
-    const stride = 150;
+  // 3. IMPROVED Pattern Matching with Multiple Window Sizes
+  const improvedSlidingWindow = () => {
     let totalScore = 0;
-    let windowCount = 0;
+    let measurements = 0;
+    
+    // Test multiple window sizes for comprehensive analysis
+    const windowSizes = [100, 150, 200, 250];
+    
+    for (const windowSize of windowSizes) {
+      const stride = Math.floor(windowSize * 0.75);
+      const maxLength = Math.min(data1.length, data2.length);
+      
+      for (let i = 0; i < maxLength - windowSize; i += stride) {
+        const window1 = data1.substring(i, i + windowSize);
+        const window2 = data2.substring(i, i + windowSize);
 
-    const maxLength = Math.min(data1.length, data2.length);
-
-    for (let i = 0; i < maxLength - windowSize; i += stride) {
-      const window1 = data1.substring(i, i + windowSize);
-      const window2 = data2.substring(i, i + windowSize);
-
-      let matches = 0;
-      for (let j = 0; j < windowSize; j++) {
-        if (window1[j] === window2[j]) {
-          matches++;
+        let exactMatches = 0;
+        let similarMatches = 0;
+        
+        for (let j = 0; j < windowSize; j++) {
+          if (window1[j] === window2[j]) {
+            exactMatches++;
+          } else {
+            // Check for similar characters
+            const code1 = window1[j]?.charCodeAt(0) || 0;
+            const code2 = window2[j]?.charCodeAt(0) || 0;
+            if (Math.abs(code1 - code2) <= 1) {
+              similarMatches++;
+            }
+          }
         }
-      }
 
-      const windowScore = matches / windowSize;
-      totalScore += windowScore;
-      windowCount++;
+        const windowScore = (exactMatches + similarMatches * 0.3) / windowSize;
+        totalScore += windowScore;
+        measurements++;
+      }
     }
 
-    return windowCount > 0 ? totalScore / windowCount : 0;
+    return measurements > 0 ? totalScore / measurements : 0;
   };
 
-  const slidingWindowScore = complexSlidingWindow();
-  console.log(`Sliding window score: ${(slidingWindowScore * 100).toFixed(2)}%`);
+  const slidingWindowScore = improvedSlidingWindow();
+  console.log(`Improved sliding window score: ${(slidingWindowScore * 100).toFixed(2)}%`);
 
-  // 4. ENTROPY Analysis for Image Complexity
+  // 4. ENHANCED ENTROPY Analysis
   const calculateEntropy = (data: string): number => {
     const freq: { [key: string]: number } = {};
     for (let i = 0; i < data.length; i++) {
@@ -323,49 +338,65 @@ export const calculateMaximumSecurityFaceSimilarity = (face1: string, face2: str
 
   console.log(`Entropy similarity: ${(entropySimilarity * 100).toFixed(2)}%`);
 
-  // 5. ULTRA-ADVANCED Structural Similarity Index (SSIM) - Placeholder
-  const structuralSimilarityIndex = 0.75; // Placeholder - needs actual SSIM implementation
-  console.log('SSIM (Structural Similarity Index):', (structuralSimilarityIndex * 100).toFixed(2) + '%');
+  // 5. HASH-BASED Similarity for Better Detection
+  const calculateHashSimilarity = () => {
+    // Create multiple hash segments for comparison
+    const segments = 8;
+    const segmentSize = Math.floor(Math.min(data1.length, data2.length) / segments);
+    
+    let hashSimilarity = 0;
+    
+    for (let i = 0; i < segments; i++) {
+      const start = i * segmentSize;
+      const end = start + segmentSize;
+      
+      const segment1 = data1.substring(start, end);
+      const segment2 = data2.substring(start, end);
+      
+      // Simple hash comparison
+      let segmentMatches = 0;
+      const checkSize = Math.min(segment1.length, segment2.length);
+      
+      for (let j = 0; j < checkSize; j++) {
+        if (segment1[j] === segment2[j]) {
+          segmentMatches++;
+        }
+      }
+      
+      hashSimilarity += segmentMatches / checkSize;
+    }
+    
+    return hashSimilarity / segments;
+  };
+  
+  const hashSimilarity = calculateHashSimilarity();
+  console.log(`Hash-based similarity: ${(hashSimilarity * 100).toFixed(2)}%`);
 
-  // 6. FEATURE Extraction and Comparison (Haar Cascades, SIFT, SURF) - Placeholder
-  const featureSimilarity = 0.80; // Placeholder - needs actual feature extraction
-  console.log('Feature-based similarity:', (featureSimilarity * 100).toFixed(2) + '%');
-
-  // 7. DEEP Learning Face Embeddings (FaceNet, OpenFace) - Placeholder
-  const deepLearningSimilarity = 0.85; // Placeholder - needs actual deep learning model
-  console.log('Deep learning similarity:', (deepLearningSimilarity * 100).toFixed(2) + '%');
-
-  // COMPOSITE SCORING with Adaptive Weights
+  // IMPROVED COMPOSITE SCORING - More accurate weights
   const weights = {
-    length: 0.05,
-    frequency: 0.10,
-    slidingWindow: 0.20,
-    entropy: 0.10,
-    structural: 0.15,
-    feature: 0.20,
-    deepLearning: 0.20
+    length: 0.15,         // Increased importance of length similarity
+    frequency: 0.25,      // High importance for frequency analysis
+    slidingWindow: 0.30,  // Highest weight for pattern matching
+    entropy: 0.15,        // Entropy analysis
+    hash: 0.15           // Hash-based comparison
   };
 
   const finalScore = (
-    lengthVariation * weights.length +
+    lengthSimilarity * weights.length +
     frequencySimilarity * weights.frequency +
     slidingWindowScore * weights.slidingWindow +
     entropySimilarity * weights.entropy +
-    structuralSimilarityIndex * weights.structural +
-    featureSimilarity * weights.feature +
-    deepLearningSimilarity * weights.deepLearning
+    hashSimilarity * weights.hash
   );
 
-  console.log('=== MAXIMUM SECURITY FACE SIMILARITY BREAKDOWN ===');
-  console.log(`Length Variation: ${(lengthVariation * 100).toFixed(1)}% (weight: ${weights.length})`);
+  console.log('=== IMPROVED MAXIMUM SECURITY FACE SIMILARITY BREAKDOWN ===');
+  console.log(`Length Similarity: ${(lengthSimilarity * 100).toFixed(1)}% (weight: ${weights.length})`);
   console.log(`Frequency Similarity: ${(frequencySimilarity * 100).toFixed(1)}% (weight: ${weights.frequency})`);
   console.log(`Sliding Window Score: ${(slidingWindowScore * 100).toFixed(1)}% (weight: ${weights.slidingWindow})`);
   console.log(`Entropy Similarity: ${(entropySimilarity * 100).toFixed(1)}% (weight: ${weights.entropy})`);
-  console.log(`Structural Similarity (SSIM): ${(structuralSimilarityIndex * 100).toFixed(1)}% (weight: ${weights.structural})`);
-  console.log(`Feature-Based Similarity: ${(featureSimilarity * 100).toFixed(1)}% (weight: ${weights.feature})`);
-  console.log(`Deep Learning Similarity: ${(deepLearningSimilarity * 100).toFixed(1)}% (weight: ${weights.deepLearning})`);
-  console.log(`🎯 FINAL MAXIMUM SECURITY SCORE: ${(finalScore * 100).toFixed(2)}%`);
-  console.log('=== MAXIMUM SECURITY FACE SIMILARITY ANALYSIS COMPLETE ===');
+  console.log(`Hash-Based Similarity: ${(hashSimilarity * 100).toFixed(1)}% (weight: ${weights.hash})`);
+  console.log(`🎯 FINAL IMPROVED SECURITY SCORE: ${(finalScore * 100).toFixed(2)}%`);
+  console.log('=== IMPROVED MAXIMUM SECURITY FACE SIMILARITY ANALYSIS COMPLETE ===');
   
   return finalScore;
 };
